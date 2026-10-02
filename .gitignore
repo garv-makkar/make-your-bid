@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.env
+.env.local
+client_secret_*.json
+.dev-server.*.log
+*.db
+*.db-journal
+/uploads/
+*.db-shm
+*.db-wal
+test-results/
+playwright-report/
+*.tsbuildinfo

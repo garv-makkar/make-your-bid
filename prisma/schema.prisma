@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Event {
+  id                  String        @id @default(cuid())
+  ownerId             String
+  name                String
+  category            String
+  status              String        @default("DRAFT")
+  mode                String        @default("LOCAL")
+  startingBudgetCents Int           @default(10000)
+  version             Int           @default(0)
+  timerEndsAt         DateTime?
+  roundMode           String        @default("NORMAL")
+  orderMode           String        @default("ORDERED")
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  entries             Entry[]
+  participants        Participant[]
+  bids                Bid[]
+
+  @@index([ownerId, createdAt])
+}
+
+model Entry {
+  id             String  @id @default(cuid())
+  eventId        String
+  event          Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name           String
+  basePriceCents Int     @default(100)
+  imageUrl       String?
+  position       Int
+  status         String  @default("PENDING")
+  soldPriceCents Int?
+  winner         String?
+  winnerId       String?
+  saleMode       String?
+  bids           Bid[]
+
+  @@index([eventId, position])
+}
+
+model Participant {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId      String
+  name        String
+  status      String   @default("PENDING")
+  budgetCents Int      @default(10000)
+  createdAt   DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+}
+
+model Bid {
+  id           String   @id @default(cuid())
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  entryId      String
+  entry        Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  bidderId     String
+  bidderName   String
+  amountCents  Int
+  chargedCents Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([entryId, amountCents])
+  @@index([eventId, createdAt])
+}
+
+model Upload {
+  id        String   @id
+  ownerId   String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
+}
