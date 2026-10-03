@@ -52,13 +52,13 @@ The Google client secret belongs only in `.env`, never in browser code.
 ## Deploying to Vercel
 
 1. Push the repository to GitHub, GitLab, or Bitbucket and import it into Vercel as a Next.js project.
-2. In **Vercel → Project → Settings → Environment Variables**, add these to Production (and Preview only if previews should use the same database):
+2. In **Vercel → Project → Settings → Environment Variables**, add these to Production:
    - `DATABASE_URL`: Supabase transaction-pooler URL (port `6543`).
    - `DIRECT_URL`: Supabase session-pooler URL (port `5432`). It is required by Prisma's schema configuration even though the running app uses `DATABASE_URL`.
    - `NEXTAUTH_SECRET`: the same long random secret used locally, or a new production-only secret.
    - `NEXTAUTH_URL`: the final canonical URL, for example `https://make-your-bid.vercel.app` (no trailing slash).
    - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-3. Keep the Vercel build command at `npm run build`. Apply database migrations deliberately with `npm run db:deploy` before deploying a schema change; do not run development migrations against production.
+3. Vercel uses `npm run build`. On production deployments, its `prebuild` hook runs `prisma migrate deploy` against the Production `DIRECT_URL` before compiling the app. Pending checked-in migrations are applied automatically; a migration error stops the deployment. Preview and local builds skip this step. Keep migrations additive when possible so the currently deployed app continues to work during a new build.
 4. Deploy, then check `/signin`, create an event, upload an image, and reload the event to verify database persistence.
 
 ## Publishing Google sign-in
