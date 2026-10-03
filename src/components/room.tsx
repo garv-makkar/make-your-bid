@@ -45,6 +45,7 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
   const refreshInFlight = useRef<Promise<void> | null>(null);
 
   const roomVersion = useRef<number | null>(null);
+  const budgetInitialized = useRef(false);
 
   const seconds = room?.timerEndsAt ? Math.max(0, Math.ceil((new Date(room.timerEndsAt).getTime() - now) / 1000)) : null;
 
@@ -66,6 +67,10 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
         if (!response.ok) throw new Error(data.error || 'Could not load room.');
 
+        if (!budgetInitialized.current) {
+          setBudget(String(data.startingBudgetCents / 100));
+          budgetInitialized.current = true;
+        }
         roomVersion.current = data.version;
 
         setRoom(data); setError(''); setConnectionIssue('');

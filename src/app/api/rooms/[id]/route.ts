@@ -96,6 +96,10 @@ export const POST = (request: Request, context: Context) => api(async () => {
   const action = actionSchema.parse(await jsonBody(request));
   const event = await db.event.findUnique({ where: { id } });
   if (!event || event.mode !== 'ONLINE') throw new HttpError(404, 'Online room not found.');
+  if (event.status === 'LIVE' && event.timerEndsAt && event.timerEndsAt <= new Date()) {
+    await settleExpired(event);
+    throw new HttpError(409, 'The timer ended. Refresh the room to continue.');
+  }
   const host = event.ownerId === user.id;
   if (action.action === 'join') {
     if (host) throw new HttpError(400, 'You are the host.');
@@ -135,14 +139,14 @@ export const POST = (request: Request, context: Context) => api(async () => {
   }
   if (action.action === 'timer' || action.action === 'cancelTimer') {
     if (!host || event.status !== 'LIVE') throw new HttpError(403, 'Only the host can control the live timer.');
-    const changed = await db.event.updateMany({ where: { id, version: action.version, status: 'LIVE' }, data: { version: { increment: 1 }, timerEndsAt: action.action === 'timer' ? new Date(Date.now() + action.seconds * 1000) : null } });
+    const changed = await db.event.updateMany({ where: { id, version: action.version, status: 'LIVE', OR: [{ timerEndsAt: null }, { timerEndsAt: { gt: new Date() } }] }, data: { version: { increment: 1 }, timerEndsAt: action.action === 'timer' ? new Date(Date.now() + action.seconds * 1000) : null } });
     if (!changed.count) throw new HttpError(409, 'Room changed. Refresh and try again.');
     return Response.json({ ok: true });
   }
   if (action.action === 'roundMode') {
     if (!host || !['LIVE', 'PAUSED'].includes(event.status)) throw new HttpError(403, 'Only the host can change the current round.');
     await db.$transaction(async tx => {
-      const locked = await tx.event.updateMany({ where: { id, version: action.version, status: event.status }, data: { version: { increment: 1 } } });
+      const locked = await tx.event.updateMany({ where: { id, version: action.version, status: event.status, OR: [{ timerEndsAt: null }, { timerEndsAt: { gt: new Date() } }] }, data: { version: { increment: 1 } } });
       if (!locked.count) throw new HttpError(409, 'Room changed. Refresh and try again.');
       const current = await tx.entry.findFirst({ where: { eventId: id, status: 'PENDING' }, orderBy: { position: 'asc' } });
       if (!current || await tx.bid.count({ where: { entryId: current.id } })) throw new HttpError(409, 'Change mode before anyone bids on this entry.');
@@ -151,7 +155,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
     return Response.json({ ok: true });
   }
   const result = await db.$transaction(async tx => {
-    const locked = await tx.event.updateMany({ where: { id, version: action.version, status: 'LIVE', ...(action.action === 'bid' ? { OR: [{ timerEndsAt: null }, { timerEndsAt: { gt: new Date() } }] } : {}) }, data: { version: { increment: 1 }, ...(action.action !== 'bid' ? { timerEndsAt: null } : {}) } });
+    const locked = await tx.event.updateMany({ where: { id, version: action.version, status: 'LIVE', OR: [{ timerEndsAt: null }, { timerEndsAt: { gt: new Date() } }] }, data: { version: { increment: 1 }, ...(action.action !== 'bid' ? { timerEndsAt: null } : {}) } });
     if (!locked.count) throw new HttpError(409, 'Room changed. Refresh and try again.');
     const current = await tx.entry.findFirst({ where: { eventId: id, status: 'PENDING' }, orderBy: { position: 'asc' } });
     if (!current || current.id !== action.entryId) throw new HttpError(409, 'This entry is no longer open.');

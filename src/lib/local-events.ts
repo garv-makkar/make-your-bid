@@ -152,16 +152,24 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
       event.entries.forEach((entry, index) => { entry.position = index; });
       event.status = 'LIVE'; event.roundMode = 'NORMAL'; event.orderMode = data.order === 'hidden' ? 'HIDDEN' : data.order === 'shuffle' ? 'SHUFFLED' : 'ORDERED'; break;
     }
-    case 'pause': event.status = 'PAUSED'; break;
-    case 'resume': event.status = 'LIVE'; break;
+    case 'pause': {
+      if (event.status !== 'LIVE') throw new Error('Event is not live.');
+      event.status = 'PAUSED'; break;
+    }
+    case 'resume': {
+      if (event.status !== 'PAUSED' || !event.entries.some(entry => entry.status === 'PENDING')) throw new Error('Add a pending entry before resuming.');
+      event.status = 'LIVE'; break;
+    }
     case 'roundMode': {
       if (!['LIVE', 'PAUSED'].includes(event.status)) throw new Error('Start the event first.');
       const entry = event.entries.find(item => item.status === 'PENDING');
       if (!entry || event.bids.some(bid => bid.entryId === entry.id)) throw new Error('Change mode before bids are placed.');
-      event.roundMode = String(data.mode); break;
+      if (data.mode !== 'NORMAL' && data.mode !== 'REVERSE') throw new Error('Invalid round mode.');
+      event.roundMode = data.mode; break;
     }
     case 'sell': {
       const entry = current(event, String(data.entryId));
+      if (event.roundMode !== 'NORMAL') throw new Error('Use reverse bids for this round.');
       const price = priceSchema.parse(data.price);
       if (price < entry.basePriceCents) throw new Error('Winning bid must meet the base price.');
       const person = event.participants.length ? event.participants.find(item => item.userId === data.winnerId) : undefined;

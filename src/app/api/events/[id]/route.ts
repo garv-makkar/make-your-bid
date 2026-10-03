@@ -53,6 +53,9 @@ export const POST = (request: Request, context: Context) => api(async () => {
       throw new HttpError(exists ? 409 : 404, exists ? 'This event changed in another tab. Reload and try again.' : 'Event not found.');
     }
     const event = await tx.event.findUniqueOrThrow({ where: { id }, include: { entries: { orderBy: { position: 'asc' } }, participants: { orderBy: { createdAt: 'asc' } } } });
+    if (event.mode === 'ONLINE' && event.status === 'LIVE' && event.timerEndsAt && event.timerEndsAt <= new Date()) {
+      throw new HttpError(409, 'The timer ended. Open the bidding room to settle this round.');
+    }
     const editable = () => { if (!['DRAFT', 'PAUSED'].includes(event.status)) throw new HttpError(409, 'Pause bidding before managing entries. Completed events must be reset first.'); };
     const pendingEntry = (entryId: string) => {
       const entry = event.entries.find(e => e.id === entryId);
