@@ -3,6 +3,7 @@ export type SummaryEntry = {
   name: string | null;
   status: string;
   winner: string | null;
+  winnerId?: string | null;
   soldPriceCents: number | null;
   saleMode: string | null;
 };
