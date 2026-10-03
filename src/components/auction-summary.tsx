@@ -1,3 +1,5 @@
+'use client';
+
 import { formatPrice } from '@/lib/validation';
 import { type SummaryEntry } from '@/lib/auction-summary';
 
@@ -16,10 +18,11 @@ export function AuctionSummary({ entries, collectedCents }: { entries: SummaryEn
 
   return <section className="panel auction-summary" aria-labelledby="auction-summary-title">
     <p className="eyebrow">FINAL RESULTS</p>
-    <h2 id="auction-summary-title">Auction summary</h2>
+    <div className="summary-title-row"><h2 id="auction-summary-title">Auction results</h2><button type="button" className="secondary summary-print" onClick={() => window.print()}>Print results</button></div>
     <p className="summary-intro">All {entries.length} {entries.length === 1 ? 'entry has' : 'entries have'} been processed.</p>
     <div className="summary-totals">
       <div><small>SOLD</small><strong>{sold.length}</strong></div>
+      <div><small>WINNERS</small><strong>{new Set(sold.map(entry => entry.winner || 'Unknown bidder')).size}</strong></div>
       <div><small>UNSOLD</small><strong>{unsold.length}</strong></div>
       <div><small>TOTAL COLLECTED</small><strong>{formatPrice(collectedCents)} <span>units</span></strong></div>
     </div>

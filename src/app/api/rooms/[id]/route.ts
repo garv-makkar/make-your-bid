@@ -65,12 +65,16 @@ export const GET = (request: Request, context: Context) => api(async () => {
   const spent = (userId: string) => event.entries.filter(entry => entry.status === 'SOLD' && entry.saleMode !== 'REVERSE' && entry.winnerId === userId).reduce((sum, entry) => sum + (entry.soldPriceCents || 0), 0) + event.bids.filter(bid => bid.bidderId === userId).reduce((sum, bid) => sum + bid.chargedCents, 0);
   return Response.json({
     id: event.id, name: event.name, category: event.category, status: event.status, version: event.version, startingBudgetCents: event.startingBudgetCents, timerEndsAt: event.timerEndsAt, roundMode: event.roundMode, roundDurationSeconds: event.roundDurationSeconds, orderMode: event.orderMode,
+    joinCode: host ? event.joinCode : null,
+    approvedCount: event.participants.filter(participant => participant.status === 'APPROVED').length,
+    pendingCount: host ? event.participants.filter(participant => participant.status === 'PENDING').length : 0,
     role: host ? 'HOST' : me?.status || 'VISITOR',
     balance: me ? { budgetCents: me.budgetCents, remainingCents: me.budgetCents - spent(user.id), won: event.entries.filter(entry => entry.winnerId === user.id).map(entry => ({ name: entry.name, priceCents: entry.soldPriceCents })) } : null,
     current: current ? { id: current.id, name: current.name, basePriceCents: current.basePriceCents, imageUrl: current.imageUrl } : null,
     leading: leading && event.roundMode !== 'SEALED' ? { amountCents: leading.amountCents, bidderName: leading.bidderName, mine: leading.bidderId === user.id } : null,
     myOfferCents: canView ? latest.get(user.id)?.amountCents ?? null : null,
     offerCount: canView ? offers.length : 0,
+    closingPreview: host && leading ? { bidderName: leading.bidderName, amountCents: leading.amountCents, bidderCount: offers.length, chargedCents: event.roundMode === 'REVERSE' ? offers.reduce((sum, bid) => sum + bid.amountCents, 0) : leading.amountCents } : null,
     entries: canView ? event.entries.map(entry => ({ id: entry.id, name: event.orderMode === 'HIDDEN' && event.status !== 'COMPLETED' && entry.status === 'PENDING' && entry.id !== current?.id ? null : entry.name, status: entry.status, winner: entry.winner, soldPriceCents: entry.soldPriceCents, saleMode: entry.saleMode })) : [],
     summary: canView && event.status === 'COMPLETED' ? summarizeAuction(event.entries, event.bids) : null,
     participants: host ? event.participants.map(participant => ({ id: participant.id, name: participant.name, status: participant.status, budgetCents: participant.budgetCents, remainingCents: participant.budgetCents - spent(participant.userId), won: event.entries.filter(entry => entry.winnerId === participant.userId).map(entry => ({ name: entry.name, priceCents: entry.soldPriceCents })) })) : [],
@@ -106,6 +110,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
   const host = event.ownerId === user.id;
   if (action.action === 'join') {
     if (host) throw new HttpError(400, 'You are the host.');
+    if (event.status === 'COMPLETED') throw new HttpError(409, 'This auction has already finished.');
     await db.$transaction([
       db.participant.upsert({ where: { eventId_userId: { eventId: id, userId: user.id } }, create: { eventId: id, userId: user.id, name: user.name, budgetCents: event.startingBudgetCents }, update: {} }),
       db.event.update({ where: { id }, data: { version: { increment: 1 } } }),
@@ -114,6 +119,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
   }
   if (action.action === 'decide') {
     if (!host) throw new HttpError(403, 'Only the host can approve bidders.');
+    if (event.status === 'COMPLETED') throw new HttpError(409, 'This auction has already finished.');
     await db.$transaction(async tx => {
       const changed = await tx.participant.updateMany({ where: { id: action.participantId, eventId: id }, data: { status: action.approve ? 'APPROVED' : 'REJECTED' } });
       if (!changed.count) throw new HttpError(404, 'Join request not found.');

@@ -82,6 +82,7 @@ This app only asks Google for the standard OpenID Connect identity scopes (name,
 - Start in the listed order or shuffle first. A skipped entry moves behind all other pending entries; it remains available until the host awards it or marks it permanently unsold. Skipping again sends it to the end again.
 - The host can choose **Reverse round** before bids are placed on the current entry. The lowest final bid wins. Every participating bidder pays their own final bid when the host awards the entry. Ties go to the earliest bid. The next entry returns to normal bidding unless the host selects reverse again.
 - In online mode, share the room link. Bidders sign in, request to join, and wait for host approval. They need available units to bid. A timer can close an online round; if nobody bid, the entry is skipped automatically.
+- Online rooms also have a 12-character code. Share the code or room link with bidders; signed-in bidders can enter the code from their dashboard. The host approves at least one bidder before starting. The room shows waiting, live bidding, and final results stages.
 
 ## Notes
 

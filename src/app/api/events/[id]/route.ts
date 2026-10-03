@@ -157,6 +157,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
       }
       case 'start': {
         if (event.status !== 'DRAFT' || !event.entries.length) throw new HttpError(409, 'Add entries to a draft event before starting.');
+        if (event.mode === 'ONLINE' && !event.participants.some(person => person.status === 'APPROVED')) throw new HttpError(409, 'Approve at least one bidder before starting the online auction.');
         if (command.order === 'shuffle' || command.order === 'hidden') {
           const entries = [...event.entries];
           for (let i = entries.length - 1; i > 0; i--) { const j = randomInt(i + 1); [entries[i], entries[j]] = [entries[j], entries[i]]; }

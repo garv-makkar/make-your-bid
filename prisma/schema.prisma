@@ -15,6 +15,7 @@ model Event {
   category            String
   status              String        @default("DRAFT")
   mode                String        @default("LOCAL")
+  joinCode            String?       @unique
   startingBudgetCents Int           @default(10000)
   version             Int           @default(0)
   timerEndsAt         DateTime?
