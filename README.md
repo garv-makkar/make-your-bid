@@ -30,7 +30,7 @@ Signed-in events and their uploaded images are stored in Supabase Postgres. Gues
    ```
 
 3. Select **Connect** in Supabase and copy both Supavisor connection strings:
-   - **Transaction mode** (port `6543`) is `DATABASE_URL`. It is used by the Vercel/serverless app. Append `?pgbouncer=true&connection_limit=1&sslmode=require` (or add these with `&` if the copied URL already has query parameters).
+   - **Transaction mode** (port `6543`) is `DATABASE_URL`. It is used by the Vercel/serverless app. Append `?pgbouncer=true&connection_limit=2&sslmode=require` (or add these with `&` if the copied URL already has query parameters).
    - **Session mode** (port `5432`) is `DIRECT_URL`. It is used by Prisma migrations and Prisma Studio.
 4. In both URLs, use `prisma` as the database user. With Supavisor that username is normally `prisma.PROJECT_REF`. Replace the password with the Prisma-role password from step 2. Percent-encode reserved URL characters in the password.
 5. Copy `.env.example` to `.env` and fill in `DATABASE_URL`, `DIRECT_URL`, the Google credentials, and a random `NEXTAUTH_SECRET`. Do not commit `.env`.

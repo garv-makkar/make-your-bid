@@ -8,16 +8,17 @@ import { activeBids, closeEntry, remainingBudget } from '@/lib/rounds';
 
 type Context = { params: Promise<{ id: string }> };
 
-async function settleExpired(id: string) {
-  const event = await db.event.findUnique({ where: { id } });
-  if (!event || event.status !== 'LIVE' || !event.timerEndsAt || event.timerEndsAt > new Date()) return;
+type ExpirableEvent = { id: string; status: string; timerEndsAt: Date | null; version: number; roundMode: string };
+
+async function settleExpired(event: ExpirableEvent) {
+  if (event.status !== 'LIVE' || !event.timerEndsAt || event.timerEndsAt > new Date()) return;
   await db.$transaction(async tx => {
-    const locked = await tx.event.updateMany({ where: { id, version: event.version, status: 'LIVE', timerEndsAt: { lte: new Date() } }, data: { version: { increment: 1 }, timerEndsAt: null } });
+    const locked = await tx.event.updateMany({ where: { id: event.id, version: event.version, status: 'LIVE', timerEndsAt: { lte: new Date() } }, data: { version: { increment: 1 }, timerEndsAt: null } });
     if (!locked.count) return;
-    const current = await tx.entry.findFirst({ where: { eventId: id, status: 'PENDING' }, orderBy: { position: 'asc' } });
+    const current = await tx.entry.findFirst({ where: { eventId: event.id, status: 'PENDING' }, orderBy: { position: 'asc' } });
     if (!current) return;
     const bids = await activeBids(tx, current.id);
-    await closeEntry(tx, id, current, event.roundMode, bids.length ? 'award' : 'skip');
+    await closeEntry(tx, event.id, current, event.roundMode, bids.length ? 'award' : 'skip');
   });
 }
 
@@ -27,11 +28,29 @@ async function identity() {
   return { id: session.user.id, name: session.user.name || session.user.email || 'Bidder' };
 }
 
-export const GET = (_request: Request, context: Context) => api(async () => {
+export const GET = (request: Request, context: Context) => api(async () => {
   const user = await identity();
   const { id } = await context.params;
-  await settleExpired(id);
-  const event = await db.event.findUnique({ where: { id }, include: { entries: { orderBy: { position: 'asc' } }, participants: { orderBy: { createdAt: 'asc' } }, bids: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] } } });
+  const loadRoom = () => db.event.findUnique({ where: { id }, include: { entries: { orderBy: { position: 'asc' } }, participants: { orderBy: { createdAt: 'asc' } }, bids: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] } } });
+  const versionParam = new URL(request.url).searchParams.get('version');
+  const knownVersion = versionParam && /^\d+$/.test(versionParam) ? Number(versionParam) : null;
+
+  if (knownVersion !== null) {
+    let snapshot = await db.event.findUnique({ where: { id }, select: { id: true, mode: true, status: true, version: true, timerEndsAt: true, roundMode: true } });
+    if (!snapshot || snapshot.mode !== 'ONLINE') throw new HttpError(404, 'Online room not found.');
+    if (snapshot.status === 'LIVE' && snapshot.timerEndsAt && snapshot.timerEndsAt <= new Date()) {
+      await settleExpired(snapshot);
+      snapshot = await db.event.findUnique({ where: { id }, select: { id: true, mode: true, status: true, version: true, timerEndsAt: true, roundMode: true } });
+      if (!snapshot) throw new HttpError(404, 'Online room not found.');
+    }
+    if (snapshot.version === knownVersion) return new Response(null, { status: 204, headers: { 'Cache-Control': 'private, no-store' } });
+  }
+
+  let event = await loadRoom();
+  if (event?.status === 'LIVE' && event.timerEndsAt && event.timerEndsAt <= new Date()) {
+    await settleExpired(event);
+    event = await loadRoom();
+  }
   if (!event || event.mode !== 'ONLINE') throw new HttpError(404, 'Online room not found.');
   const host = event.ownerId === user.id;
   const me = event.participants.find(participant => participant.userId === user.id);
@@ -53,7 +72,7 @@ export const GET = (_request: Request, context: Context) => api(async () => {
     offerCount: canView ? offers.length : 0,
     entries: canView ? event.entries.map(entry => ({ id: entry.id, name: event.orderMode === 'HIDDEN' && event.status !== 'COMPLETED' && entry.status === 'PENDING' && entry.id !== current?.id ? null : entry.name, status: entry.status, winner: entry.winner, soldPriceCents: entry.soldPriceCents, saleMode: entry.saleMode })) : [],
     participants: host ? event.participants.map(participant => ({ id: participant.id, name: participant.name, status: participant.status, budgetCents: participant.budgetCents, remainingCents: participant.budgetCents - spent(participant.userId), won: event.entries.filter(entry => entry.winnerId === participant.userId).map(entry => ({ name: entry.name, priceCents: entry.soldPriceCents })) })) : [],
-  });
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
 });
 
 const actionSchema = z.discriminatedUnion('action', [
@@ -80,19 +99,25 @@ export const POST = (request: Request, context: Context) => api(async () => {
   const host = event.ownerId === user.id;
   if (action.action === 'join') {
     if (host) throw new HttpError(400, 'You are the host.');
-    await db.participant.upsert({ where: { eventId_userId: { eventId: id, userId: user.id } }, create: { eventId: id, userId: user.id, name: user.name, budgetCents: event.startingBudgetCents }, update: {} });
+    await db.$transaction([
+      db.participant.upsert({ where: { eventId_userId: { eventId: id, userId: user.id } }, create: { eventId: id, userId: user.id, name: user.name, budgetCents: event.startingBudgetCents }, update: {} }),
+      db.event.update({ where: { id }, data: { version: { increment: 1 } } }),
+    ]);
     return Response.json({ ok: true });
   }
   if (action.action === 'decide') {
     if (!host) throw new HttpError(403, 'Only the host can approve bidders.');
-    const changed = await db.participant.updateMany({ where: { id: action.participantId, eventId: id }, data: { status: action.approve ? 'APPROVED' : 'REJECTED' } });
-    if (!changed.count) throw new HttpError(404, 'Join request not found.');
+    await db.$transaction(async tx => {
+      const changed = await tx.participant.updateMany({ where: { id: action.participantId, eventId: id }, data: { status: action.approve ? 'APPROVED' : 'REJECTED' } });
+      if (!changed.count) throw new HttpError(404, 'Join request not found.');
+      await tx.event.update({ where: { id }, data: { version: { increment: 1 } } });
+    });
     return Response.json({ ok: true });
   }
   if (action.action === 'startingBudget') {
     if (!host) throw new HttpError(403, 'Only the host can set the starting balance.');
     if (event.status !== 'DRAFT') throw new HttpError(409, 'Starting balance can only change before the first round.');
-    await db.$transaction([db.event.update({ where: { id }, data: { startingBudgetCents: action.amount } }), db.participant.updateMany({ where: { eventId: id }, data: { budgetCents: action.amount } })]);
+    await db.$transaction([db.event.update({ where: { id }, data: { startingBudgetCents: action.amount, version: { increment: 1 } } }), db.participant.updateMany({ where: { eventId: id }, data: { budgetCents: action.amount } })]);
     return Response.json({ ok: true });
   }
   if (action.action === 'budget') {
@@ -102,7 +127,10 @@ export const POST = (request: Request, context: Context) => api(async () => {
     if (!participant) throw new HttpError(404, 'Bidder not found.');
     const spent = await db.$transaction(tx => remainingBudget(tx, id, participant.userId, participant.budgetCents));
     if (action.amount < participant.budgetCents - spent) throw new HttpError(400, 'Budget cannot be less than the bidder has already spent.');
-    await db.participant.update({ where: { id: participant.id }, data: { budgetCents: action.amount } });
+    await db.$transaction([
+      db.participant.update({ where: { id: participant.id }, data: { budgetCents: action.amount } }),
+      db.event.update({ where: { id }, data: { version: { increment: 1 } } }),
+    ]);
     return Response.json({ ok: true });
   }
   if (action.action === 'timer' || action.action === 'cancelTimer') {

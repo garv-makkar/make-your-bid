@@ -71,8 +71,18 @@ p{line-height:1.6}
 .event-card:focus-visible{outline-offset:4px}
 .empty{line-height:1.6;background:#fcfbf8}
 .workspace-footer{margin-top:36px}
+.account-settings{margin-top:42px;display:flex;justify-content:space-between;align-items:flex-start;gap:28px}
+.account-settings h2{margin:6px 0}
+.account-settings p{margin:5px 0;max-width:690px}
+.account-actions{display:grid;justify-items:end;gap:4px;flex:0 0 auto}
+.delete-account-confirmation{display:grid;gap:16px;max-width:650px;margin-left:auto}
+.delete-warning{background:#fff0eb;border:1px solid #f3bdb1;border-radius:10px;color:#8d2c22;padding:16px 18px}
+.delete-warning p{color:#8d2c22;margin:6px 0 0}
+.danger-button{background:#a63429}
+.danger-button:not(:disabled):hover{background:#85271f}
 @media(max-width:1000px){.workspace-body,.room-body{grid-template-columns:minmax(0,1fr) 300px;gap:18px}.bidder-row{grid-template-columns:repeat(2,minmax(0,1fr))}.bidder-row button{justify-self:start}}
 @media(max-width:760px){.workspace-body,.room-body{grid-template-columns:1fr}.workspace-aside{position:static;max-height:none;overflow:visible}.progress-list{max-height:none}.workspace-header,.room-heading{align-items:start}.header-actions{justify-content:flex-start}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.stats>div{padding:15px}.stats small{font-size:9px;letter-spacing:.09em}.progress-panel{padding:20px}.bidder-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.shell{padding:0 16px 44px}.topbar{height:auto;min-height:70px;flex-wrap:wrap;padding:14px 0}.brand{font-size:22px}.topbar .button-row{gap:6px}.landing-actions>*{width:100%}.landing-choices{gap:14px}.hero,.landing-hero{padding-top:52px;padding-bottom:42px}.hero p:last-child,.landing-hero>p:not(.eyebrow){font-size:16px}.workspace-header,.room-heading{padding-top:30px}.stats{gap:8px}.stats strong{font-size:22px}.stats>div{padding:12px}.button-row{gap:8px}.bidder-row{grid-template-columns:1fr}.bidder-row .text-button{justify-self:start}.entry-mode-tabs{display:grid;grid-template-columns:1fr 1fr}.entry-mode-tabs button:last-child{grid-column:1/-1}.bid-form label{flex-basis:100%}.progress-item{padding:11px 9px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}button,.button-link,.event-card,input,select,textarea{transition:none}}
 @media(max-width:520px){.create-form{display:grid;grid-template-columns:1fr}.create-form label:first-child,.create-form label:nth-child(2){min-width:0}.create-form button{width:100%}}
+@media(max-width:760px){.account-settings{display:grid}.account-actions{justify-items:start}.delete-account-confirmation{margin-left:0}}
