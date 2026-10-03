@@ -19,7 +19,7 @@ async function settleExpired(event: ExpirableEvent) {
     const current = await tx.entry.findFirst({ where: { eventId: event.id, status: 'PENDING' }, orderBy: { position: 'asc' } });
     if (!current) return;
     const bids = await activeBids(tx, current.id);
-    await closeEntry(tx, event.id, current, event.roundMode, bids.length ? 'award' : 'skip');
+    await closeEntry(tx, event.id, current, event.roundMode, bids.length ? 'award' : event.roundMode === 'TIMED' ? 'pass' : 'skip');
   });
 }
 
@@ -64,11 +64,11 @@ export const GET = (request: Request, context: Context) => api(async () => {
   const leading = offers[0];
   const spent = (userId: string) => event.entries.filter(entry => entry.status === 'SOLD' && entry.saleMode !== 'REVERSE' && entry.winnerId === userId).reduce((sum, entry) => sum + (entry.soldPriceCents || 0), 0) + event.bids.filter(bid => bid.bidderId === userId).reduce((sum, bid) => sum + bid.chargedCents, 0);
   return Response.json({
-    id: event.id, name: event.name, category: event.category, status: event.status, version: event.version, startingBudgetCents: event.startingBudgetCents, timerEndsAt: event.timerEndsAt, roundMode: event.roundMode, orderMode: event.orderMode,
+    id: event.id, name: event.name, category: event.category, status: event.status, version: event.version, startingBudgetCents: event.startingBudgetCents, timerEndsAt: event.timerEndsAt, roundMode: event.roundMode, roundDurationSeconds: event.roundDurationSeconds, orderMode: event.orderMode,
     role: host ? 'HOST' : me?.status || 'VISITOR',
     balance: me ? { budgetCents: me.budgetCents, remainingCents: me.budgetCents - spent(user.id), won: event.entries.filter(entry => entry.winnerId === user.id).map(entry => ({ name: entry.name, priceCents: entry.soldPriceCents })) } : null,
     current: current ? { id: current.id, name: current.name, basePriceCents: current.basePriceCents, imageUrl: current.imageUrl } : null,
-    leading: leading ? { amountCents: leading.amountCents, bidderName: leading.bidderName, mine: leading.bidderId === user.id } : null,
+    leading: leading && event.roundMode !== 'SEALED' ? { amountCents: leading.amountCents, bidderName: leading.bidderName, mine: leading.bidderId === user.id } : null,
     myOfferCents: canView ? latest.get(user.id)?.amountCents ?? null : null,
     offerCount: canView ? offers.length : 0,
     entries: canView ? event.entries.map(entry => ({ id: entry.id, name: event.orderMode === 'HIDDEN' && event.status !== 'COMPLETED' && entry.status === 'PENDING' && entry.id !== current?.id ? null : entry.name, status: entry.status, winner: entry.winner, soldPriceCents: entry.soldPriceCents, saleMode: entry.saleMode })) : [],
@@ -82,7 +82,8 @@ const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('decide'), participantId: z.string(), approve: z.boolean() }),
   z.object({ action: z.literal('startingBudget'), amount: priceSchema }),
   z.object({ action: z.literal('budget'), participantId: z.string(), amount: priceSchema }),
-  z.object({ action: z.literal('roundMode'), version: z.number().int().nonnegative(), mode: z.enum(['NORMAL', 'REVERSE']) }),
+  z.object({ action: z.literal('roundMode'), version: z.number().int().nonnegative(), mode: z.enum(['NORMAL', 'REVERSE', 'SEALED', 'TIMED']) }),
+  z.object({ action: z.literal('roundDuration'), version: z.number().int().nonnegative(), seconds: z.union([z.literal(15), z.literal(30), z.literal(60)]) }),
   z.object({ action: z.literal('timer'), version: z.number().int().nonnegative(), seconds: z.union([z.literal(10), z.literal(15), z.literal(30)]) }),
   z.object({ action: z.literal('cancelTimer'), version: z.number().int().nonnegative() }),
   z.object({ action: z.literal('bid'), version: z.number().int().nonnegative(), entryId: z.string(), amount: priceSchema }),
@@ -139,20 +140,32 @@ export const POST = (request: Request, context: Context) => api(async () => {
     ]);
     return Response.json({ ok: true });
   }
+  if (action.action === 'roundDuration') {
+    if (!host || !['DRAFT', 'LIVE', 'PAUSED'].includes(event.status)) throw new HttpError(403, 'Only the host can set the round length.');
+    await db.$transaction(async tx => {
+      const locked = await tx.event.updateMany({ where: { id, version: action.version }, data: { version: { increment: 1 } } });
+      if (!locked.count) throw new HttpError(409, 'Room changed. Refresh and try again.');
+      const current = await tx.entry.findFirst({ where: { eventId: id, status: 'PENDING' }, orderBy: { position: 'asc' } });
+      if (current && await tx.bid.count({ where: { entryId: current.id } })) throw new HttpError(409, 'Change the timer before anyone bids.');
+      await tx.event.update({ where: { id }, data: { roundDurationSeconds: action.seconds, timerEndsAt: event.roundMode === 'TIMED' && event.status === 'LIVE' ? new Date(Date.now() + action.seconds * 1000) : null } });
+    });
+    return Response.json({ ok: true });
+  }
   if (action.action === 'timer' || action.action === 'cancelTimer') {
+    if (event.roundMode === 'TIMED') throw new HttpError(409, 'Timed rounds use the selected countdown.');
     if (!host || event.status !== 'LIVE') throw new HttpError(403, 'Only the host can control the live timer.');
     const changed = await db.event.updateMany({ where: { id, version: action.version, status: 'LIVE', OR: [{ timerEndsAt: null }, { timerEndsAt: { gt: new Date() } }] }, data: { version: { increment: 1 }, timerEndsAt: action.action === 'timer' ? new Date(Date.now() + action.seconds * 1000) : null } });
     if (!changed.count) throw new HttpError(409, 'Room changed. Refresh and try again.');
     return Response.json({ ok: true });
   }
   if (action.action === 'roundMode') {
-    if (!host || !['LIVE', 'PAUSED'].includes(event.status)) throw new HttpError(403, 'Only the host can change the current round.');
+    if (!host || !['DRAFT', 'LIVE', 'PAUSED'].includes(event.status)) throw new HttpError(403, 'Only the host can change the current round.');
     await db.$transaction(async tx => {
       const locked = await tx.event.updateMany({ where: { id, version: action.version, status: event.status, OR: [{ timerEndsAt: null }, { timerEndsAt: { gt: new Date() } }] }, data: { version: { increment: 1 } } });
       if (!locked.count) throw new HttpError(409, 'Room changed. Refresh and try again.');
       const current = await tx.entry.findFirst({ where: { eventId: id, status: 'PENDING' }, orderBy: { position: 'asc' } });
       if (!current || await tx.bid.count({ where: { entryId: current.id } })) throw new HttpError(409, 'Change mode before anyone bids on this entry.');
-      await tx.event.update({ where: { id }, data: { roundMode: action.mode, timerEndsAt: null } });
+      await tx.event.update({ where: { id }, data: { roundMode: action.mode, timerEndsAt: action.mode === 'TIMED' && event.status === 'LIVE' ? new Date(Date.now() + event.roundDurationSeconds * 1000) : null } });
     });
     return Response.json({ ok: true });
   }
@@ -168,7 +181,8 @@ export const POST = (request: Request, context: Context) => api(async () => {
       const leading = [...bids].sort((a, b) => event.roundMode === 'REVERSE' ? a.amountCents - b.amountCents : b.amountCents - a.amountCents)[0];
       const previous = bids.find(bid => bid.bidderId === user.id);
       if (action.amount < current.basePriceCents) throw new HttpError(400, 'Bid must meet the base price.');
-      if (event.roundMode === 'NORMAL' && leading && action.amount <= leading.amountCents) throw new HttpError(400, 'Bid must exceed the current offer.');
+      if ((event.roundMode === 'NORMAL' || event.roundMode === 'TIMED') && leading && action.amount <= leading.amountCents) throw new HttpError(400, 'Bid must exceed the current offer.');
+      if (event.roundMode === 'SEALED' && previous && action.amount <= previous.amountCents) throw new HttpError(400, 'A revised sealed bid must exceed your previous offer.');
       if (event.roundMode === 'REVERSE' && previous && action.amount >= previous.amountCents) throw new HttpError(400, 'A revised reverse bid must be lower than your previous bid.');
       if (action.amount > await remainingBudget(tx, id, user.id, participant.budgetCents)) throw new HttpError(400, 'Bid exceeds your remaining units.');
       await tx.bid.create({ data: { eventId: id, entryId: current.id, bidderId: user.id, bidderName: participant.name, amountCents: action.amount } });

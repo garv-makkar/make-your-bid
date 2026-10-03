@@ -14,13 +14,13 @@ export type GuestBid = {
 };
 export type GuestEvent = {
   id: string; name: string; category: string; mode: 'LOCAL'; status: string;
-  roundMode: string; orderMode: string; version: number; updatedAt: string;
+  roundMode: string; roundDurationSeconds: number; timerEndsAt: string | null; orderMode: string; version: number; updatedAt: string;
   startingBudgetCents: number; participants: GuestParticipant[];
   entries: GuestEntry[]; bids: GuestBid[];
 };
 
 function all(): GuestEvent[] {
-  try { return (JSON.parse(localStorage.getItem(KEY) || '[]') as GuestEvent[]).map(event => ({ ...event, orderMode: event.orderMode ?? 'ORDERED', startingBudgetCents: event.startingBudgetCents ?? 10000, participants: event.participants ?? [] })); }
+  try { return (JSON.parse(localStorage.getItem(KEY) || '[]') as GuestEvent[]).map(event => ({ ...event, orderMode: event.orderMode ?? 'ORDERED', roundDurationSeconds: event.roundDurationSeconds ?? 30, timerEndsAt: event.timerEndsAt ?? null, startingBudgetCents: event.startingBudgetCents ?? 10000, participants: event.participants ?? [] })); }
   catch { return []; }
 }
 
@@ -33,7 +33,7 @@ function save(events: GuestEvent[]) {
 export function listGuestEvents() { return all().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)); }
 export function getGuestEvent(id: string) { return all().find(event => event.id === id) || null; }
 export function createGuestEvent(name: string, category: string) {
-  const event: GuestEvent = { id: crypto.randomUUID(), name: name.trim(), category, mode: 'LOCAL', status: 'DRAFT', roundMode: 'NORMAL', orderMode: 'ORDERED', version: 0, updatedAt: new Date().toISOString(), startingBudgetCents: 10000, participants: [], entries: [], bids: [] };
+  const event: GuestEvent = { id: crypto.randomUUID(), name: name.trim(), category, mode: 'LOCAL', status: 'DRAFT', roundMode: 'NORMAL', roundDurationSeconds: 30, timerEndsAt: null, orderMode: 'ORDERED', version: 0, updatedAt: new Date().toISOString(), startingBudgetCents: 10000, participants: [], entries: [], bids: [] };
   save([event, ...all()]);
   return event;
 }
@@ -46,6 +46,7 @@ function current(event: GuestEvent, entryId?: string) {
 
 function finish(event: GuestEvent) {
   event.roundMode = 'NORMAL';
+  event.timerEndsAt = null;
   if (!event.entries.some(entry => entry.status === 'PENDING')) event.status = 'COMPLETED';
 }
 
@@ -61,6 +62,7 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
   const events = all();
   const event = events.find(item => item.id === id);
   if (!event) throw new Error('Local event not found in this browser.');
+  if (event.status === 'LIVE' && event.roundMode === 'TIMED' && event.timerEndsAt && Date.now() >= new Date(event.timerEndsAt).getTime() && data.action !== 'settleTimed') throw new Error('The timer ended. Settle the timed round.');
   const editable = () => { if (!['DRAFT', 'PAUSED'].includes(event.status)) throw new Error('Pause bidding to edit entries.'); };
   const entryInput = data.entry as { name: string; basePrice: string; imageUrl: string };
   const entryDetails = () => ({ name: entryInput.name.trim(), basePriceCents: priceSchema.parse(entryInput.basePrice), imageUrl: entryInput.imageUrl.trim() || null });
@@ -150,22 +152,60 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
       if (event.status !== 'DRAFT' || !event.entries.length) throw new Error('Add entries before starting.');
       if (data.order === 'shuffle' || data.order === 'hidden') for (let i = event.entries.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [event.entries[i], event.entries[j]] = [event.entries[j], event.entries[i]]; }
       event.entries.forEach((entry, index) => { entry.position = index; });
-      event.status = 'LIVE'; event.roundMode = 'NORMAL'; event.orderMode = data.order === 'hidden' ? 'HIDDEN' : data.order === 'shuffle' ? 'SHUFFLED' : 'ORDERED'; break;
+      event.status = 'LIVE'; event.timerEndsAt = event.roundMode === 'TIMED' ? new Date(Date.now() + event.roundDurationSeconds * 1000).toISOString() : null; event.orderMode = data.order === 'hidden' ? 'HIDDEN' : data.order === 'shuffle' ? 'SHUFFLED' : 'ORDERED'; break;
     }
     case 'pause': {
       if (event.status !== 'LIVE') throw new Error('Event is not live.');
-      event.status = 'PAUSED'; break;
+      event.status = 'PAUSED'; event.timerEndsAt = null; break;
     }
     case 'resume': {
       if (event.status !== 'PAUSED' || !event.entries.some(entry => entry.status === 'PENDING')) throw new Error('Add a pending entry before resuming.');
-      event.status = 'LIVE'; break;
+      event.status = 'LIVE'; event.timerEndsAt = event.roundMode === 'TIMED' ? new Date(Date.now() + event.roundDurationSeconds * 1000).toISOString() : null; break;
     }
     case 'roundMode': {
-      if (!['LIVE', 'PAUSED'].includes(event.status)) throw new Error('Start the event first.');
+      if (!['DRAFT', 'LIVE', 'PAUSED'].includes(event.status)) throw new Error('Auction already ended.');
       const entry = event.entries.find(item => item.status === 'PENDING');
       if (!entry || event.bids.some(bid => bid.entryId === entry.id)) throw new Error('Change mode before bids are placed.');
-      if (data.mode !== 'NORMAL' && data.mode !== 'REVERSE') throw new Error('Invalid round mode.');
-      event.roundMode = data.mode; break;
+      if (!['NORMAL', 'REVERSE', 'SEALED', 'TIMED'].includes(String(data.mode))) throw new Error('Invalid round mode.');
+      event.roundMode = String(data.mode); event.timerEndsAt = event.roundMode === 'TIMED' && event.status === 'LIVE' ? new Date(Date.now() + event.roundDurationSeconds * 1000).toISOString() : null; break;
+    }
+    case 'roundDuration': {
+      if (!['DRAFT', 'LIVE', 'PAUSED'].includes(event.status)) throw new Error('Auction already ended.');
+      const entry = event.entries.find(item => item.status === 'PENDING');
+      if (entry && event.bids.some(bid => bid.entryId === entry.id)) throw new Error('Change the timer before bids are placed.');
+      const seconds = Number(data.seconds);
+      if (![15, 30, 60].includes(seconds)) throw new Error('Choose 15, 30, or 60 seconds.');
+      event.roundDurationSeconds = seconds;
+      if (event.roundMode === 'TIMED' && event.status === 'LIVE') event.timerEndsAt = new Date(Date.now() + seconds * 1000).toISOString();
+      break;
+    }
+    case 'recordBid': {
+      const entry = current(event, String(data.entryId));
+      if (!['SEALED', 'TIMED'].includes(event.roundMode)) throw new Error('Select sealed or timed bidding first.');
+      if (event.roundMode === 'TIMED' && (!event.timerEndsAt || Date.now() >= new Date(event.timerEndsAt).getTime())) throw new Error('The timed round has ended.');
+      const amount = priceSchema.parse(data.amount);
+      if (amount < entry.basePriceCents) throw new Error('Bid must meet the base price.');
+      const person = event.participants.length ? event.participants.find(item => item.userId === data.bidderId) : undefined;
+      if (event.participants.length && !person) throw new Error('Choose a bidder from the roster.');
+      const bidderName = person?.name || String(data.bidder).trim();
+      if (!bidderName) throw new Error('Enter a bidder name.');
+      const bidderId = person?.userId || `local:${bidderName.toLocaleLowerCase()}`;
+      const previous = event.bids.filter(bid => bid.entryId === entry.id && bid.bidderId === bidderId).at(-1);
+      if (person && amount > remaining(event, bidderId)) throw new Error('Bid exceeds this bidder’s remaining units.');
+      if (event.roundMode === 'SEALED' && previous && amount <= previous.amountCents) throw new Error('A revised sealed bid must be higher.');
+      if (event.roundMode === 'TIMED' && event.bids.some(bid => bid.entryId === entry.id && bid.amountCents >= amount)) throw new Error('Bid must exceed the leading offer.');
+      event.bids.push({ id: crypto.randomUUID(), entryId: entry.id, bidderId, bidderName, amountCents: amount, chargedCents: 0 }); break;
+    }
+    case 'awardBids':
+    case 'settleTimed': {
+      const entry = current(event, String(data.entryId));
+      if (data.action === 'awardBids' && event.roundMode !== 'SEALED') throw new Error('Select sealed bidding first.');
+      if (data.action === 'settleTimed' && (event.roundMode !== 'TIMED' || !event.timerEndsAt || Date.now() < new Date(event.timerEndsAt).getTime())) throw new Error('The timed round is still open.');
+      const latest = new Map<string, GuestBid>();
+      for (const bid of event.bids.filter(bid => bid.entryId === entry.id)) latest.set(bid.bidderId, bid);
+      const winner = [...latest.values()].sort((a, b) => b.amountCents - a.amountCents || event.bids.indexOf(a) - event.bids.indexOf(b))[0];
+      if (!winner && data.action === 'awardBids') throw new Error('Record at least one sealed bid, or mark the entry unsold.');
+      entry.status = winner ? 'SOLD' : 'UNSOLD'; entry.winner = winner?.bidderName ?? null; entry.winnerId = winner?.bidderId ?? null; entry.soldPriceCents = winner?.amountCents ?? null; entry.saleMode = event.roundMode; finish(event); break;
     }
     case 'sell': {
       const entry = current(event, String(data.entryId));
@@ -207,7 +247,7 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
       event.entries = event.entries.filter(item => item.id !== entry.id);
       event.entries.push(entry);
       event.entries.forEach((item, index) => { item.position = index; });
-      event.roundMode = 'NORMAL'; break;
+      event.roundMode = 'NORMAL'; event.timerEndsAt = null; break;
     }
     case 'unsold': {
       const entry = current(event, String(data.entryId));
@@ -215,7 +255,7 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
     }
     case 'reset': {
       event.entries.forEach(entry => { entry.status = 'PENDING'; entry.winner = null; entry.winnerId = null; entry.soldPriceCents = null; entry.saleMode = null; });
-      event.bids = []; event.status = 'DRAFT'; event.roundMode = 'NORMAL'; event.orderMode = 'ORDERED'; break;
+      event.bids = []; event.status = 'DRAFT'; event.roundMode = 'NORMAL'; event.timerEndsAt = null; event.orderMode = 'ORDERED'; break;
     }
     case 'delete': save(events.filter(item => item.id !== id)); return { deleted: true };
     default: throw new Error('Unknown action.');

@@ -19,6 +19,7 @@ model Event {
   version             Int           @default(0)
   timerEndsAt         DateTime?
   roundMode           String        @default("NORMAL")
+  roundDurationSeconds Int          @default(30)
   orderMode           String        @default("ORDERED")
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt

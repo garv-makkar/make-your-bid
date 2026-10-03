@@ -4,7 +4,7 @@ import { HttpError } from './http';
 type Tx = Prisma.TransactionClient;
 
 export async function remainingBudget(tx: Tx, eventId: string, userId: string, budgetCents: number) {
-  const normal = await tx.entry.aggregate({ where: { eventId, winnerId: userId, status: 'SOLD', OR: [{ saleMode: 'NORMAL' }, { saleMode: null }] }, _sum: { soldPriceCents: true } });
+  const normal = await tx.entry.aggregate({ where: { eventId, winnerId: userId, status: 'SOLD', OR: [{ saleMode: { in: ['NORMAL', 'SEALED', 'TIMED'] } }, { saleMode: null }] }, _sum: { soldPriceCents: true } });
   const reverse = await tx.bid.aggregate({ where: { eventId, bidderId: userId }, _sum: { chargedCents: true } });
   return budgetCents - (normal._sum.soldPriceCents || 0) - (reverse._sum.chargedCents || 0);
 }

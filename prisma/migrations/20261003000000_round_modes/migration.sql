@@ -1,0 +1,1 @@
+ALTER TABLE "Event" ADD COLUMN "roundDurationSeconds" INTEGER NOT NULL DEFAULT 30;

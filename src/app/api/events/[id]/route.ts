@@ -31,9 +31,13 @@ const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('sell'), entryId: z.string(), winner: z.string().trim().min(1).max(120), winnerId: z.string().optional(), price: priceSchema }),
   z.object({ action: z.literal('unsold'), entryId: z.string() }),
   z.object({ action: z.literal('skip'), entryId: z.string() }),
-  z.object({ action: z.literal('roundMode'), mode: z.enum(['NORMAL', 'REVERSE']) }),
+  z.object({ action: z.literal('roundMode'), mode: z.enum(['NORMAL', 'REVERSE', 'SEALED', 'TIMED']) }),
+  z.object({ action: z.literal('roundDuration'), seconds: z.union([z.literal(15), z.literal(30), z.literal(60)]) }),
   z.object({ action: z.literal('reverseBid'), entryId: z.string(), bidder: z.string().trim().min(1).max(120), bidderId: z.string().optional(), amount: priceSchema }),
   z.object({ action: z.literal('reverseAward'), entryId: z.string() }),
+  z.object({ action: z.literal('recordBid'), entryId: z.string(), bidder: z.string().trim().min(1).max(120), bidderId: z.string().optional(), amount: priceSchema }),
+  z.object({ action: z.literal('awardBids'), entryId: z.string() }),
+  z.object({ action: z.literal('settleTimed'), entryId: z.string() }),
   z.object({ action: z.literal('reset') }),
   z.object({ action: z.literal('delete') }),
 ]);
@@ -56,6 +60,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
     if (event.mode === 'ONLINE' && event.status === 'LIVE' && event.timerEndsAt && event.timerEndsAt <= new Date()) {
       throw new HttpError(409, 'The timer ended. Open the bidding room to settle this round.');
     }
+    if (event.mode === 'LOCAL' && event.status === 'LIVE' && event.roundMode === 'TIMED' && event.timerEndsAt && event.timerEndsAt <= new Date() && command.action !== 'settleTimed') throw new HttpError(409, 'The timer ended. Settle the timed round.');
     const editable = () => { if (!['DRAFT', 'PAUSED'].includes(event.status)) throw new HttpError(409, 'Pause bidding before managing entries. Completed events must be reset first.'); };
     const pendingEntry = (entryId: string) => {
       const entry = event.entries.find(e => e.id === entryId);
@@ -157,23 +162,47 @@ export const POST = (request: Request, context: Context) => api(async () => {
           for (let i = entries.length - 1; i > 0; i--) { const j = randomInt(i + 1); [entries[i], entries[j]] = [entries[j], entries[i]]; }
           for (const [position, entry] of entries.entries()) await tx.entry.update({ where: { id: entry.id }, data: { position } });
         }
-        await tx.event.update({ where: { id }, data: { status: 'LIVE', roundMode: 'NORMAL', orderMode: command.order === 'hidden' ? 'HIDDEN' : command.order === 'shuffle' ? 'SHUFFLED' : 'ORDERED' } }); break;
+        await tx.event.update({ where: { id }, data: { status: 'LIVE', timerEndsAt: event.roundMode === 'TIMED' ? new Date(Date.now() + event.roundDurationSeconds * 1000) : null, orderMode: command.order === 'hidden' ? 'HIDDEN' : command.order === 'shuffle' ? 'SHUFFLED' : 'ORDERED' } }); break;
       }
       case 'pause':
         if (event.status !== 'LIVE') throw new HttpError(409, 'Event is not live.');
         await tx.event.update({ where: { id }, data: { status: 'PAUSED', timerEndsAt: null } }); break;
       case 'resume':
         if (event.status !== 'PAUSED' || !event.entries.some(e => e.status === 'PENDING')) throw new HttpError(409, 'Add a pending entry before resuming.');
-        await tx.event.update({ where: { id }, data: { status: 'LIVE' } }); break;
+        await tx.event.update({ where: { id }, data: { status: 'LIVE', timerEndsAt: event.roundMode === 'TIMED' ? new Date(Date.now() + event.roundDurationSeconds * 1000) : null } }); break;
       case 'sell':
       case 'unsold':
       case 'skip':
       case 'reverseBid':
-      case 'reverseAward': {
+      case 'reverseAward':
+      case 'recordBid':
+      case 'awardBids':
+      case 'settleTimed': {
         if (event.mode === 'ONLINE') throw new HttpError(409, 'Close online rounds in the bidding room.');
         const current = event.entries.find(e => e.status === 'PENDING');
         if (event.status !== 'LIVE' || current?.id !== command.entryId) throw new HttpError(409, 'This is no longer the current entry. Reload the event.');
-        if (command.action === 'reverseBid') {
+        if (command.action === 'recordBid') {
+          if (event.roundMode !== 'SEALED' && event.roundMode !== 'TIMED') throw new HttpError(409, 'Select sealed or timed bidding first.');
+          if (event.roundMode === 'TIMED' && (!event.timerEndsAt || event.timerEndsAt <= new Date())) throw new HttpError(409, 'The timed round has ended.');
+          if (command.amount < current.basePriceCents) throw new HttpError(400, 'Bid must meet the base price.');
+          const registered = event.participants.length ? event.participants.find(person => person.userId === command.bidderId) : undefined;
+          if (event.participants.length && !registered) throw new HttpError(400, 'Choose a bidder from the roster.');
+          const bidderId = registered?.userId || `local:${command.bidder.toLocaleLowerCase()}`;
+          if (registered && command.amount > await remainingBudget(tx, id, bidderId, registered.budgetCents)) throw new HttpError(400, 'Bid exceeds this bidder’s remaining units.');
+          const previous = (await activeBids(tx, current.id)).find(bid => bid.bidderId === bidderId);
+          if (event.roundMode === 'SEALED' && previous && command.amount <= previous.amountCents) throw new HttpError(400, 'A revised sealed bid must be higher.');
+          if (event.roundMode === 'TIMED') {
+            const leading = (await activeBids(tx, current.id)).sort((a, b) => b.amountCents - a.amountCents)[0];
+            if (leading && command.amount <= leading.amountCents) throw new HttpError(400, 'Bid must exceed the leading offer.');
+          }
+          await tx.bid.create({ data: { eventId: id, entryId: current.id, bidderId, bidderName: registered?.name || command.bidder, amountCents: command.amount } });
+        } else if (command.action === 'awardBids' || command.action === 'settleTimed') {
+          if (command.action === 'awardBids' && event.roundMode !== 'SEALED') throw new HttpError(409, 'Select sealed bidding first.');
+          if (command.action === 'settleTimed' && (event.roundMode !== 'TIMED' || !event.timerEndsAt || event.timerEndsAt > new Date())) throw new HttpError(409, 'The timed round is still open.');
+          const bids = await activeBids(tx, current.id);
+          if (!bids.length && command.action === 'awardBids') throw new HttpError(400, 'Record a sealed bid or mark the entry unsold.');
+          await closeEntry(tx, id, current, event.roundMode, bids.length ? 'award' : 'pass');
+        } else if (command.action === 'reverseBid') {
           if (event.roundMode !== 'REVERSE') throw new HttpError(409, 'Enable reverse bidding first.');
           if (command.amount < current.basePriceCents) throw new HttpError(400, 'Bid must meet the base price.');
           const registered = event.participants.length ? event.participants.find(person => person.userId === command.bidderId) : undefined;
@@ -187,7 +216,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
           if (event.roundMode !== 'REVERSE') throw new HttpError(409, 'Enable reverse bidding first.');
           await closeEntry(tx, id, current, 'REVERSE', 'award');
         } else if (command.action === 'sell') {
-          if (event.roundMode !== 'NORMAL') throw new HttpError(409, 'Use reverse bids for this round.');
+          if (event.roundMode !== 'NORMAL') throw new HttpError(409, 'Use the bidding controls for this round mode.');
           if (command.price < current.basePriceCents) throw new HttpError(400, 'Winning price cannot be below base price.');
           const registered = event.participants.length ? event.participants.find(person => person.userId === command.winnerId) : undefined;
           if (event.participants.length && !registered) throw new HttpError(400, 'Choose a bidder from the roster.');
@@ -199,11 +228,18 @@ export const POST = (request: Request, context: Context) => api(async () => {
         break;
       }
       case 'roundMode': {
-        if (event.status !== 'LIVE' && event.status !== 'PAUSED') throw new HttpError(409, 'Start the event before choosing a round mode.');
+        if (!['DRAFT', 'LIVE', 'PAUSED'].includes(event.status)) throw new HttpError(409, 'Choose a mode before the auction ends.');
         const current = event.entries.find(e => e.status === 'PENDING');
         if (!current) throw new HttpError(409, 'No pending entry.');
         if (await tx.bid.count({ where: { entryId: current.id } })) throw new HttpError(409, 'This round already has bids. Close or skip it before changing mode.');
-        await tx.event.update({ where: { id }, data: { roundMode: command.mode, timerEndsAt: null } });
+        await tx.event.update({ where: { id }, data: { roundMode: command.mode, timerEndsAt: command.mode === 'TIMED' && event.status === 'LIVE' ? new Date(Date.now() + event.roundDurationSeconds * 1000) : null } });
+        break;
+      }
+      case 'roundDuration': {
+        if (!['DRAFT', 'LIVE', 'PAUSED'].includes(event.status)) throw new HttpError(409, 'Auction already ended.');
+        const current = event.entries.find(e => e.status === 'PENDING');
+        if (current && await tx.bid.count({ where: { entryId: current.id } })) throw new HttpError(409, 'Change the timer before anyone bids.');
+        await tx.event.update({ where: { id }, data: { roundDurationSeconds: command.seconds, timerEndsAt: event.roundMode === 'TIMED' && event.status === 'LIVE' ? new Date(Date.now() + command.seconds * 1000) : null } });
         break;
       }
       case 'reset':

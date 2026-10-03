@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "npm run setup",
     "dev": "next dev --hostname localhost",
     "build": "prisma generate && next build",
     "start": "next start --hostname localhost",
@@ -14,7 +13,6 @@
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "db:studio": "prisma studio",
-    "setup": "node scripts/setup.mjs && prisma generate && prisma migrate deploy",
     "postinstall": "prisma generate"
   },
   "dependencies": {

@@ -8,7 +8,7 @@ An auction website built with Next.js, React, Prisma, and Supabase Postgres. The
 2. Create and configure the Supabase database as described below.
 3. In this folder, run `npm install`.
 4. Run `npm run db:deploy` once to create/update the Supabase tables.
-5. Run `npm run dev` and open `http://localhost:3000`. This generates the Prisma client and applies pending database migrations before starting the server. Always use `localhost` for Google sign-in; the app redirects `127.0.0.1` to it during development.
+5. Run `npm run dev` and open `http://localhost:3000`. The Prisma client is generated during installation; apply pending migrations with `npm run db:deploy` before starting the server. Use `localhost` for Google sign-in.
 
 Signed-in events and their uploaded images are stored in Supabase Postgres. Guest events are stored separately in that browser's local storage. They can be lost if site data is cleared and are not automatically transferred into a Google account. Online rooms require Google sign-in.
 
