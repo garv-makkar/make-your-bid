@@ -1,2 +1,2 @@
 import Link from 'next/link';
-export default function NotFound() { return <main><h1>Event not found</h1><p>This event is unavailable in your account.</p><Link href="/">Back to your events</Link></main>; }
+export default function NotFound() { return <main className="shell"><header className="topbar"><Link href="/" className="brand">make your bid<span>.</span></Link></header><section className="panel state-page"><span className="state-page-mark">?</span><p className="eyebrow">NOT FOUND</p><h1>That event isn’t here.</h1><p>The link may have changed, or this event may be unavailable in your account.</p><Link className="button-link" href="/">Back to home ↗</Link></section></main>; }
