@@ -86,3 +86,22 @@ p{line-height:1.6}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}button,.button-link,.event-card,input,select,textarea{transition:none}}
 @media(max-width:520px){.create-form{display:grid;grid-template-columns:1fr}.create-form label:first-child,.create-form label:nth-child(2){min-width:0}.create-form button{width:100%}}
 @media(max-width:760px){.account-settings{display:grid}.account-actions{justify-items:start}.delete-account-confirmation{margin-left:0}}
+.auction-summary{border-color:#d7b3a9}
+.auction-summary .eyebrow{margin:0 0 7px}
+.auction-summary h2{margin-bottom:6px}
+.auction-summary .summary-intro{margin:0 0 22px}
+.summary-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:26px}
+.summary-totals>div{display:grid;gap:5px;padding:16px;background:#f8f6ef;border-radius:11px}
+.summary-totals small{font-size:10px;font-weight:700;letter-spacing:.12em;color:#827969}
+.summary-totals strong{font-family:'Playfair Display',serif;font-size:27px;line-height:1.2;overflow-wrap:anywhere}
+.summary-totals strong span{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600}
+.summary-group{margin-top:22px}
+.summary-group h3{font-family:'Playfair Display',serif;margin:0 0 10px;font-size:22px}
+.summary-group ul{list-style:none;margin:0;padding:0}
+.summary-group li{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid #eee9df}
+.summary-group li>div{display:grid;gap:3px;min-width:0}
+.summary-group li strong{overflow-wrap:anywhere}
+.summary-group li span{font-size:12px;color:#777267}
+.summary-group li b{white-space:nowrap;font-size:13px}
+.auction-summary .summary-note{margin:22px 0 0;font-size:12px}
+@media(max-width:520px){.summary-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.summary-totals>div:last-child{grid-column:1/-1}}

@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { api, checkOrigin, HttpError, jsonBody } from '@/lib/http';
 import { priceSchema } from '@/lib/validation';
 import { activeBids, closeEntry, remainingBudget } from '@/lib/rounds';
+import { summarizeAuction } from '@/lib/auction-summary';
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -71,6 +72,7 @@ export const GET = (request: Request, context: Context) => api(async () => {
     myOfferCents: canView ? latest.get(user.id)?.amountCents ?? null : null,
     offerCount: canView ? offers.length : 0,
     entries: canView ? event.entries.map(entry => ({ id: entry.id, name: event.orderMode === 'HIDDEN' && event.status !== 'COMPLETED' && entry.status === 'PENDING' && entry.id !== current?.id ? null : entry.name, status: entry.status, winner: entry.winner, soldPriceCents: entry.soldPriceCents, saleMode: entry.saleMode })) : [],
+    summary: canView && event.status === 'COMPLETED' ? summarizeAuction(event.entries, event.bids) : null,
     participants: host ? event.participants.map(participant => ({ id: participant.id, name: participant.name, status: participant.status, budgetCents: participant.budgetCents, remainingCents: participant.budgetCents - spent(participant.userId), won: event.entries.filter(entry => entry.winnerId === participant.userId).map(entry => ({ name: entry.name, priceCents: entry.soldPriceCents })) })) : [],
   }, { headers: { 'Cache-Control': 'private, no-store' } });
 });
