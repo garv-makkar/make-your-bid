@@ -26,6 +26,7 @@ export function ProfileMenu({ name, email }: { name?: string; email?: string }) 
         <div className="profile-menu-divider" />
         <Link href="/dashboard">Dashboard</Link>
         <Link href="/dashboard/events">Your events</Link>
+        <Link href="/settings">Settings</Link>
         <Link href="/dashboard/profile">Profile &amp; privacy</Link>
         <div className="profile-menu-divider" />
         <SignOutButton />
