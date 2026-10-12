@@ -15,7 +15,7 @@ import { RoundModePicker } from './round-mode-picker';
 import { CloseRoundPreview } from './close-round-preview';
 import { RoomStage } from './room-stage';
 import { roundRules, type RoundMode } from '@/lib/round-modes';
-import { SignOutButton } from './account-controls';
+import { ProfileMenu } from './profile-menu';
 
 
 
@@ -215,7 +215,7 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
 
 
-  return <main className={`shell room-shell${room?.role === 'APPROVED' ? ' room-shell-bidder' : ''}${room ? ` room-status-${room.status.toLowerCase()}` : ''}`}><header className="topbar"><Link href="/" className="brand">make your bid<span>.</span></Link><nav className="button-row">{room?.role === 'HOST' && <Link href={`/events/${id}`} className="text-button">Manage entries →</Link>}{signedIn && <SignOutButton />}</nav></header>
+  return <main className={`shell room-shell${room?.role === 'APPROVED' ? ' room-shell-bidder' : ''}${room ? ` room-status-${room.status.toLowerCase()}` : ''}`}><header className="topbar"><Link href="/" className="brand">make your bid<span>.</span></Link><nav className="button-row">{room?.role === 'HOST' && <Link href={`/events/${id}`} className="text-button">Manage entries →</Link>}{signedIn && <ProfileMenu />}</nav></header>
 
     {connectionIssue && <div role="status" className="room-message warning"><span className="connection-dot" />{connectionIssue}</div>}
 

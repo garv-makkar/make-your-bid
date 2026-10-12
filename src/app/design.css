@@ -387,6 +387,8 @@ main.shell:has(> .guest-hero) > .events-section { align-self: start; min-height:
 main.shell:has(> .guest-hero) > .events-section .empty-events { min-height: 0; padding: 20px; }
 main.shell:has(> .guest-hero) > .dashboard-hero { padding-top: 16px; }
 main.shell:has(> .guest-hero) > .dashboard-hero h1 { font-size: clamp(32px, 3vw, 46px); }
+main.shell:has(> .guest-hero) > .dashboard-hero .hero-steps { display: none; }
+main.shell:has(> .guest-hero) > .dashboard-hero p:last-of-type { max-width: 570px; }
 main.shell:has(> .guest-hero) > .create-panel { padding: 14px 18px; }
 main.shell:has(> .guest-hero) > .local-room-notice { padding: 8px 12px; font-size: 13px; line-height: 1.35; }
 
