@@ -75,7 +75,7 @@ export const GET = (request: Request, context: Context) => api(async () => {
     myOfferCents: canView ? latest.get(user.id)?.amountCents ?? null : null,
     offerCount: canView ? offers.length : 0,
     closingPreview: host && leading ? { bidderName: leading.bidderName, amountCents: leading.amountCents, bidderCount: offers.length, chargedCents: event.roundMode === 'REVERSE' ? offers.reduce((sum, bid) => sum + bid.amountCents, 0) : leading.amountCents } : null,
-    entries: canView ? event.entries.map(entry => ({ id: entry.id, name: event.orderMode === 'HIDDEN' && event.status !== 'COMPLETED' && entry.status === 'PENDING' && entry.id !== current?.id ? null : entry.name, status: entry.status, winner: entry.winner, soldPriceCents: entry.soldPriceCents, saleMode: entry.saleMode })) : [],
+    entries: canView ? event.entries.map(entry => ({ id: entry.id, name: event.orderMode === 'HIDDEN' && event.status !== 'COMPLETED' && entry.status === 'PENDING' && entry.id !== current?.id ? null : entry.name, basePriceCents: entry.basePriceCents, status: entry.status, winner: entry.winner, soldPriceCents: entry.soldPriceCents, saleMode: entry.saleMode })) : [],
     summary: canView && event.status === 'COMPLETED' ? summarizeAuction(event.entries, event.bids) : null,
     participants: host ? event.participants.map(participant => ({ id: participant.id, name: participant.name, status: participant.status, budgetCents: participant.budgetCents, remainingCents: participant.budgetCents - spent(participant.userId), won: event.entries.filter(entry => entry.winnerId === participant.userId).map(entry => ({ name: entry.name, priceCents: entry.soldPriceCents })) })) : [],
   }, { headers: { 'Cache-Control': 'private, no-store' } });
@@ -109,8 +109,20 @@ export const POST = (request: Request, context: Context) => api(async () => {
   }
   const host = event.ownerId === user.id;
   if (action.action === 'join') {
-    if (host) throw new HttpError(400, 'You are the host.');
     if (event.status === 'COMPLETED') throw new HttpError(409, 'This auction has already finished.');
+    const opened = await db.event.findUnique({ where: { id }, select: { joinCode: true, startingBudgetCents: true } });
+    if (!opened?.joinCode || !await db.entry.count({ where: { eventId: id } })) throw new HttpError(409, 'The host must add entries and open the room first.');
+    if (host) {
+      await db.$transaction(async tx => {
+        await tx.participant.upsert({
+          where: { eventId_userId: { eventId: id, userId: user.id } },
+          create: { eventId: id, userId: user.id, name: user.name, status: 'APPROVED', budgetCents: opened.startingBudgetCents },
+          update: { status: 'APPROVED' },
+        });
+        await tx.event.update({ where: { id }, data: { version: { increment: 1 } } });
+      });
+      return Response.json({ ok: true });
+    }
     await db.$transaction([
       db.participant.upsert({ where: { eventId_userId: { eventId: id, userId: user.id } }, create: { eventId: id, userId: user.id, name: user.name, budgetCents: event.startingBudgetCents }, update: {} }),
       db.event.update({ where: { id }, data: { version: { increment: 1 } } }),

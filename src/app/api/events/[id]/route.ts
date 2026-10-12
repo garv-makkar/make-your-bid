@@ -15,6 +15,7 @@ export const GET = (_request: Request, context: Context) => api(async () => {
 
 const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('update'), ...eventSchema.shape }),
+  z.object({ action: z.literal('openRoom') }),
   z.object({ action: z.literal('add'), entry: entrySchema }),
   z.object({ action: z.literal('addMany'), entries: z.array(entrySchema).min(1).max(MAX_ENTRIES) }),
   z.object({ action: z.literal('startingBudget'), amount: priceSchema }),
@@ -75,6 +76,12 @@ export const POST = (request: Request, context: Context) => api(async () => {
       }
     };
     switch (command.action) {
+      case 'openRoom': {
+        if (event.mode !== 'ONLINE' || event.status !== 'DRAFT') throw new HttpError(409, 'Only draft online auctions can open a room.');
+        if (!event.entries.length) throw new HttpError(409, 'Add entries before opening the bidding room.');
+        if (!event.joinCode) await tx.event.update({ where: { id }, data: { joinCode: randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase() } });
+        break;
+      }
       case 'update':
         await tx.event.update({ where: { id }, data: { name: command.name, category: command.category } }); break;
       case 'startingBudget': {
@@ -157,6 +164,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
       }
       case 'start': {
         if (event.status !== 'DRAFT' || !event.entries.length) throw new HttpError(409, 'Add entries to a draft event before starting.');
+        if (event.mode === 'ONLINE' && !event.joinCode) throw new HttpError(409, 'Open the bidding room before starting the online auction.');
         if (event.mode === 'ONLINE' && !event.participants.some(person => person.status === 'APPROVED')) throw new HttpError(409, 'Approve at least one bidder before starting the online auction.');
         if (command.order === 'shuffle' || command.order === 'hidden') {
           const entries = [...event.entries];
