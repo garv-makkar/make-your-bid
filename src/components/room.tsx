@@ -15,6 +15,7 @@ import { RoundModePicker } from './round-mode-picker';
 import { CloseRoundPreview } from './close-round-preview';
 import { RoomStage } from './room-stage';
 import { roundRules, type RoundMode } from '@/lib/round-modes';
+import { apiError, displayError } from '@/lib/client-errors';
 import { ProfileMenu } from './profile-menu';
 
 
@@ -72,9 +73,8 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
         if (response.status === 204) { setConnectionIssue(''); return; }
 
+        if (!response.ok) throw await apiError(response, 'Could not load the room.');
         const data = await response.json();
-
-        if (!response.ok) throw new Error(data.error || 'Could not load room.');
 
         if (!budgetInitialized.current) {
           setBudget(String(data.startingBudgetCents / 100));
@@ -86,7 +86,7 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
       } catch (caught) {
 
-        const message = (caught as Error).message;
+        const message = displayError(caught, 'Could not load the room.');
 
         if (roomVersion.current === null) setError(message);
 
@@ -158,9 +158,7 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
       const response = await fetch(`/api/rooms/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
 
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error || 'Could not complete action.');
+      if (!response.ok) throw await apiError(response, 'Could not complete that action.');
 
       const action = String(data.action || '');
 
@@ -172,7 +170,7 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
       await refreshAfterAction(); return true;
 
-    } catch (error) { const message = (error as Error).message; await refresh(); setError(message); return false; }
+    } catch (caught) { const message = displayError(caught, 'Could not complete that action.'); await refresh(); setError(message); return false; }
 
     finally { setBusy(false); }
 
@@ -188,15 +186,13 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
       const response = await fetch(`/api/events/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, version: room.version, ...(action === 'start' ? { order } : {}) }) });
 
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error || 'Could not update event.');
+      if (!response.ok) throw await apiError(response, 'Could not update the auction.');
 
       setNotice(action === 'start' ? 'Auction started.' : action === 'pause' ? 'Bidding paused.' : 'Bidding resumed.');
 
       await refreshAfterAction();
 
-    } catch (error) { const message = (error as Error).message; await refresh(); setError(message); }
+    } catch (caught) { const message = displayError(caught, 'Could not update the auction.'); await refresh(); setError(message); }
 
     finally { setBusy(false); }
 
@@ -219,13 +215,13 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
     {connectionIssue && <div role="status" className="room-message warning"><span className="connection-dot" />{connectionIssue}</div>}
 
-    {error && <div role="alert" className="room-message error"><span>{error}</span><button className="text-button" onClick={() => { setError(''); void refresh(); }}>Retry</button></div>}
+    {error && <div role="alert" className="room-message error"><span>{error}</span><div className="button-row">{error.includes('session has expired') ? <Link href="/signin" className="text-button">Sign in</Link> : <button type="button" className="text-button" onClick={() => { setError(''); void refresh(); }}>Refresh room</button>}<button type="button" className="text-button" onClick={() => setError('')}>Dismiss</button></div></div>}
 
     {notice && <div role="status" className="room-message success"><span>{notice}</span><button className="text-button" aria-label="Dismiss message" onClick={() => setNotice('')}>Dismiss</button></div>}
 
-    {!signedIn ? <section className="panel room-gate"><p className="eyebrow">BIDDING ROOM</p><h1>Sign in to join</h1><p>After signing in, request access from the host.</p><div className="button-row">{googleEnabled && <button onClick={() => signIn('google', { callbackUrl: location.href })}>Continue with Google</button>}</div></section> : !room ? <div className="panel room-loading"><span className="loading-spinner" /><div><strong>Opening bidding room</strong><p>Connecting to the live auction…</p></div></div> : <>
+    {!signedIn ? <section className="panel room-gate"><p className="eyebrow">BIDDING ROOM</p><h1>Sign in to join</h1><p>After signing in, request access from the host.</p><div className="button-row">{googleEnabled && <button onClick={() => signIn('google', { callbackUrl: location.href })}>Continue with Google</button>}</div></section> : !room ? <div className="panel room-loading">{error ? <div><strong>Room unavailable</strong><p>Refresh the room above, or check the invite with the host.</p></div> : <><span className="loading-spinner" /><div><strong>Opening bidding room</strong><p>Connecting to the live auction…</p></div></>}</div> : <>
 
-      <div className="room-heading"><div><p className="eyebrow">LIVE BIDDING ROOM · {room.category.toUpperCase()}</p><h1>{room.name}</h1><span className="status">{room.status}</span></div><div className="button-row">{room.role === 'HOST' && <button className="secondary" onClick={copyLink}>{copied ? 'Copied!' : 'Copy invite link'}</button>}</div></div>
+      <div className="room-heading"><div><p className="eyebrow">LIVE BIDDING ROOM · {room.category.toUpperCase()}</p><h1>{room.name}</h1><span className="status">{room.status}</span></div><div className="button-row">{room.role === 'HOST' && room.joinCode && <button className="secondary" onClick={copyLink}>{copied ? 'Copied!' : 'Copy invite link'}</button>}</div></div>
 
       {room.role === 'VISITOR' && room.status === 'COMPLETED' && <section className="panel room-gate"><h2>This auction has finished</h2><p>The host has closed bidding. Ask the host for the results.</p></section>}
       {room.role === 'VISITOR' && room.status !== 'COMPLETED' && <section className="panel room-gate"><h2>Join this auction</h2><p>Ask the host for approval to bid and follow the live rounds.</p><button disabled={busy} onClick={() => act({ action: 'join' })}>{busy ? 'Sending request…' : 'Request to join'}</button></section>}

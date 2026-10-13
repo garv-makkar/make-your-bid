@@ -75,6 +75,14 @@ export const POST = (request: Request, context: Context) => api(async () => {
         if (!upload) throw new HttpError(400, 'Image upload not found.');
       }
     };
+    if (
+      event.mode === 'ONLINE' &&
+      event.participants.length > 0 &&
+      ['add', 'addMany', 'edit', 'remove', 'import', 'reorder'].includes(command.action)
+    ) {
+      throw new HttpError(409, 'Entries are locked after bidders join. Finish entry setup before inviting bidders.');
+    }
+
     switch (command.action) {
       case 'openRoom': {
         if (event.mode !== 'ONLINE' || event.status !== 'DRAFT') throw new HttpError(409, 'Only draft online auctions can open a room.');

@@ -1,0 +1,11 @@
+.create-panel .error-message { margin: 14px 0 0; }
+.signout-control { display: inline-flex; flex-direction: column; align-items: flex-start; }
+.signout-control .error-message { max-width: 260px; margin: 4px 0 0; font-size: 12px; }
+.dashboard-events-error { grid-column: 2; grid-row: 2; align-self: stretch; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.workspace-error, .room-shell > .room-message.error { position: sticky; top: 8px; z-index: 45; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 12px 30px #321e161a; }
+.workspace-error > span, .room-shell > .room-message.error > span { min-width: 0; }
+.workspace-error .button-row, .room-shell > .room-message.error .button-row { flex: 0 0 auto; }
+@media (max-width: 700px) {
+  .dashboard-events-error { grid-column: 1; grid-row: auto; }
+  .workspace-error, .room-shell > .room-message.error { top: 4px; align-items: flex-start; flex-direction: column; gap: 6px; }
+}

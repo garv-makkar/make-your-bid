@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { apiError, displayError } from '@/lib/client-errors';
 
 export function JoinRoomByCode() {
   const [code, setCode] = useState('');
@@ -12,11 +13,11 @@ export function JoinRoomByCode() {
     setBusy(true); setError('');
     try {
       const response = await fetch('/api/rooms/join-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+      if (!response.ok) throw await apiError(response, 'Could not find that room. Check the code and try again.');
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Could not find that room.');
       window.location.href = `/events/${result.id}/room`;
     } catch (caught) {
-      setError((caught as Error).message);
+      setError(displayError(caught, 'Could not open the room.'));
       setBusy(false);
     }
   }
