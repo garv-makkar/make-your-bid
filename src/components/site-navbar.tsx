@@ -20,9 +20,9 @@ export function SiteNavbar({ mode, backHref, backLabel = 'Back', contextHref, co
   const homeHref = mode === 'account' ? '/dashboard' : mode === 'local' ? '/local' : '/';
   const showBack = Boolean(backHref && backHref !== homeHref && backHref !== '/' && backLabel.toLowerCase() !== 'home');
   const links = mode === 'account'
-    ? [{ href: '/dashboard/events', label: 'Your events' }, { href: '/dashboard/events/past', label: 'Past events' }, { href: '/settings', label: 'Settings' }]
+    ? [{ href: '/dashboard/events', label: 'Your events' }, { href: '/settings', label: 'Settings' }]
     : mode === 'local'
-      ? [{ href: '/local/events', label: 'Events in this browser' }, { href: '/local/events/past', label: 'Past events' }, { href: '/settings', label: 'Settings' }]
+      ? [{ href: '/local/events', label: 'Your events' }, { href: '/settings', label: 'Settings' }]
       : [{ href: '/local', label: 'Local auctions' }];
 
   return <header className="topbar site-navbar">
@@ -32,7 +32,7 @@ export function SiteNavbar({ mode, backHref, backLabel = 'Back', contextHref, co
     </div>
     <nav className="site-navbar-links" aria-label="Main navigation">
       {contextHref && contextLabel && <Link className="site-navbar-context" href={contextHref}>{contextLabel}</Link>}
-      {links.map(link => <Link key={link.href} href={link.href} aria-current={pathname === link.href ? 'page' : undefined}>{link.label}</Link>)}
+      {links.map(link => <Link key={link.href} href={link.href} aria-label={mode === 'local' && link.label === 'Your events' ? 'Events in this browser' : undefined} aria-current={pathname === link.href ? 'page' : undefined}>{link.label}</Link>)}
       {mode === 'account' ? <ProfileMenu name={name} email={email} /> : pathname !== '/signin' && <Link className="site-navbar-signin" href="/signin">Sign in</Link>}
     </nav>
   </header>;
