@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ProfileMenu } from './profile-menu';
+import { SiteNavbar } from './site-navbar';
 import { JoinRoomByCode } from './join-room-by-code';
 import { apiError, displayError } from '@/lib/client-errors';
 import { StyledSelect } from './styled-select';
@@ -37,7 +37,7 @@ export function Dashboard({ user, email }: { user: string; email?: string }) {
   }
 
   return <main className="shell account-dashboard-page">
-    <header className="topbar"><Link href="/" className="brand">make your bid<span>.</span></Link><div className="button-row"><Link className="text-button" href="/dashboard/events">Your events</Link><ProfileMenu name={user} email={email} /></div></header>
+    <SiteNavbar mode="account" name={user} email={email} />
     <section className="hero dashboard-hero"><p className="eyebrow">YOUR AUCTION STUDIO</p><h1>Make the next bid<br /><em>count.</em></h1><p>Create an event, add your entries, and guide each round from opening bid to final result.</p><div className="hero-steps"><span><b>01</b> Create</span><span><b>02</b> Add entries</span><span><b>03</b> Start bidding</span></div></section>
       <div className="section-title"><div><p className="eyebrow">WELCOME BACK</p><h2>{user || 'Your dashboard'}</h2></div></div>
       <section className="panel create-panel"><div className="create-panel-heading"><div><p className="eyebrow">NEW AUCTION</p><h3>Create an event</h3></div><p>Give it a name and choose how people will bid.</p></div><form className="create-form" onSubmit={createEvent}><label>Event name<input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Friday player auction" maxLength={120} required /></label><StyledSelect label="Category" value={category} onChange={setCategory} options={[{ value: 'Players', label: 'Players' }, { value: 'Items', label: 'Items' }, { value: 'Other', label: 'Other' }]} /><StyledSelect label="Mode" value={mode} onChange={setMode} options={[{ value: 'LOCAL', label: 'Local / host run', description: 'Run bids on this device' }, { value: 'ONLINE', label: 'Online / bidders join', description: 'Invite bidders to a room' }]} />{mode === 'ONLINE' && <label>Starting units per bidder<input type="number" min="0.01" max="10000000" step="0.01" value={startingBudget} onChange={e => setStartingBudget(e.target.value)} required /></label>}<button disabled={busy}>{busy ? 'Creating…' : 'Create event ↗'}</button></form>{error && <p role="alert" className="error-message">{error}</p>}</section>

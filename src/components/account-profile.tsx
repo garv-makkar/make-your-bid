@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { DeleteAccount, SignOutButton } from './account-controls';
-import { ProfileMenu } from './profile-menu';
+import { SiteNavbar } from './site-navbar';
 import { apiError, displayError } from '@/lib/client-errors';
 
 export function AccountProfile({ name, email }: { name: string; email?: string }) {
@@ -17,7 +17,7 @@ export function AccountProfile({ name, email }: { name: string; email?: string }
       .catch((caught) => setCountError(displayError(caught, 'Could not load your event count.')));
   }, []);
   return <main className="shell profile-page">
-    <header className="topbar"><Link href="/" className="brand">make your bid<span>.</span></Link><div className="button-row"><Link className="text-button" href="/dashboard">Dashboard</Link><ProfileMenu name={name} email={email} /></div></header>
+    <SiteNavbar mode="account" backHref="/dashboard" backLabel="Dashboard" name={name} email={email} />
     <div className="history-heading"><div><p className="eyebrow">YOUR ACCOUNT</p><h1>Profile &amp; privacy<span>.</span></h1></div></div>
     <section className="panel profile-card"><div className="profile-avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</div><div><p className="eyebrow">SIGNED IN AS</p><h2>{name}</h2>{email && <p>{email}</p>}</div></section>
     <section className="panel profile-card"><div><p className="eyebrow">SIGN OUT</p><h2>Come back anytime</h2><p>Your saved events stay in your account when you sign out.</p></div><SignOutButton /></section>

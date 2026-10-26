@@ -16,7 +16,7 @@ import { CloseRoundPreview } from './close-round-preview';
 import { RoomStage } from './room-stage';
 import { roundRules, type RoundMode } from '@/lib/round-modes';
 import { apiError, displayError } from '@/lib/client-errors';
-import { ProfileMenu } from './profile-menu';
+import { SiteNavbar } from './site-navbar';
 
 
 
@@ -211,7 +211,7 @@ export function Room({ id, signedIn, googleEnabled }: { id: string; signedIn: bo
 
 
 
-  return <main className={`shell room-shell${room?.role === 'APPROVED' ? ' room-shell-bidder' : ''}${room ? ` room-status-${room.status.toLowerCase()}` : ''}`}><header className="topbar"><Link href="/" className="brand">make your bid<span>.</span></Link><nav className="button-row">{room?.role === 'HOST' && <Link href={`/events/${id}`} className="text-button">Manage entries →</Link>}{signedIn && <ProfileMenu />}</nav></header>
+  return <main className={`shell room-shell${room?.role === 'APPROVED' ? ' room-shell-bidder' : ''}${room ? ` room-status-${room.status.toLowerCase()}` : ''}`}><SiteNavbar mode={signedIn ? 'account' : 'public'} backHref={room?.role === 'HOST' ? `/events/${id}` : signedIn ? '/dashboard' : '/'} backLabel={room?.role === 'HOST' ? 'Manage event' : 'Back'} />
 
     {connectionIssue && <div role="status" className="room-message warning"><span className="connection-dot" />{connectionIssue}</div>}
 

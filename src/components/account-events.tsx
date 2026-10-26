@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ProfileMenu } from './profile-menu';
+import { SiteNavbar } from './site-navbar';
 import { apiError, displayError } from '@/lib/client-errors';
 
 type EventSummary = { id: string; name: string; category: string; status: string; updatedAt: string; _count: { entries: number } };
@@ -32,7 +32,7 @@ export function AccountEvents({ name, email }: { name: string; email?: string })
   const visible = events.filter((event) => filter === 'all' || (filter === 'completed' ? event.status === 'COMPLETED' : event.status !== 'COMPLETED'));
 
   return <main className="shell event-history-page">
-    <header className="topbar"><Link href="/" className="brand">make your bid<span>.</span></Link><div className="button-row"><Link className="text-button" href="/dashboard">Dashboard</Link><ProfileMenu name={name} email={email} /></div></header>
+    <SiteNavbar mode="account" backHref="/dashboard" backLabel="Dashboard" name={name} email={email} />
     <div className="history-heading"><div><p className="eyebrow">YOUR AUCTION ARCHIVE</p><h1>Your events<span>.</span></h1><p>Pick up an auction or revisit a finished one.</p></div><Link className="button-link" href="/dashboard">Create an event ↗</Link></div>
     <div className="history-tabs" role="group" aria-label="Filter events"><button className={filter === 'all' ? 'selected' : ''} onClick={() => setFilter('all')}>All <span>{events.length}</span></button><button className={filter === 'active' ? 'selected' : ''} onClick={() => setFilter('active')}>In progress <span>{events.filter((event) => event.status !== 'COMPLETED').length}</span></button><button className={filter === 'completed' ? 'selected' : ''} onClick={() => setFilter('completed')}>Past events <span>{events.filter((event) => event.status === 'COMPLETED').length}</span></button></div>
     {error && <div role="alert" className="error-message">{error} {error.includes('session has expired') ? <Link href="/signin" className="text-button">Sign in</Link> : <button type="button" className="text-button" onClick={() => { void loadEvents(); }}>Try again</button>}</div>}
