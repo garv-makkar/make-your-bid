@@ -7,9 +7,9 @@ import { apiError, displayError } from '@/lib/client-errors';
 
 type EventSummary = { id: string; name: string; category: string; status: string; updatedAt: string; _count: { entries: number } };
 
-export function AccountEvents({ name, email }: { name: string; email?: string }) {
+export function AccountEvents({ name, email, initialFilter = 'all' }: { name: string; email?: string; initialFilter?: 'all' | 'completed' }) {
   const [events, setEvents] = useState<EventSummary[]>([]);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>(initialFilter);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 

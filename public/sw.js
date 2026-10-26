@@ -1,4 +1,4 @@
-const LOCAL_CACHE = 'make-your-bid-local-v2';
+const LOCAL_CACHE = 'make-your-bid-local-v3';
 const LOCAL_SHELL = '/local';
 
 self.addEventListener('install', (event) => {
@@ -34,6 +34,11 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
+    if (url.pathname === '/local/events' || url.pathname === '/local/events/past') {
+      const view = url.pathname.endsWith('/past') ? 'past' : 'events';
+      event.respondWith(fetch(request).catch(() => Response.redirect(new URL('/local?view=' + view, self.location.origin).toString(), 302)));
+      return;
+    }
     if (url.pathname.startsWith('/local/') && url.pathname !== '/local/') {
       const id = url.pathname.slice('/local/'.length);
       event.respondWith(fetch(request).catch(() => Response.redirect(new URL(`/local?event=${encodeURIComponent(id)}`, self.location.origin).toString(), 302)));

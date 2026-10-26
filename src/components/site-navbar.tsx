@@ -20,9 +20,9 @@ export function SiteNavbar({ mode, backHref, backLabel = 'Back', contextHref, co
   const homeHref = mode === 'account' ? '/dashboard' : mode === 'local' ? '/local' : '/';
   const showBack = Boolean(backHref && backHref !== homeHref && backHref !== '/' && backLabel.toLowerCase() !== 'home');
   const links = mode === 'account'
-    ? [{ href: '/dashboard/events', label: 'Your events' }, { href: '/settings', label: 'Settings' }]
+    ? [{ href: '/dashboard/events', label: 'Your events' }, { href: '/dashboard/events/past', label: 'Past events' }, { href: '/settings', label: 'Settings' }]
     : mode === 'local'
-      ? [{ href: '/settings', label: 'Settings' }]
+      ? [{ href: '/local/events', label: 'Events in this browser' }, { href: '/local/events/past', label: 'Past events' }, { href: '/settings', label: 'Settings' }]
       : [{ href: '/local', label: 'Local auctions' }];
 
   return <header className="topbar site-navbar">
