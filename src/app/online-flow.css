@@ -11,17 +11,7 @@
 .prestart-entry-list li strong { overflow-wrap: anywhere; }
 .prestart-entry-list li > span:last-child { flex: none; color: #52665a; font-size: 13px; font-weight: 700; }
 .prestart-entry-list > p { padding: 0 21px 17px; margin: 0; }
-.host-bidder-opt-in, .host-bid-panel { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px; background: #eef5eb; border-color: #d2e2d0; }
-.host-bidder-opt-in h2, .host-bid-panel h2 { font-size: 25px; margin: 3px 0 6px; }
-.host-bidder-opt-in p, .host-bid-panel p { margin: 0; line-height: 1.45; }
-.host-bidder-opt-in > button { flex: none; }
-.host-bid-panel .bid-form { display: flex; flex: 0 0 min(410px, 48%); align-items: end; }
-.host-bid-panel .bid-form label { min-width: 140px; }
 @media (max-width: 760px) {
-  .host-bidder-opt-in, .host-bid-panel { display: block; padding: 18px; }
-  .host-bidder-opt-in > button { width: 100%; margin-top: 15px; }
-  .host-bid-panel .bid-form { display: grid; grid-template-columns: 1fr; margin-top: 15px; }
-  .host-bid-panel .bid-form button { width: 100%; }
   .prestart-entry-list summary { padding: 14px 16px; }
   .prestart-entry-list ol { padding: 0 16px 12px; }
   .prestart-entry-list li { align-items: flex-start; }

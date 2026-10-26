@@ -1,0 +1,42 @@
+.setup-steps { margin: 18px 0; padding: 18px 20px; border: 1px solid #dce5d9; border-radius: 17px; background: #f4f8f2; }
+.setup-steps > .eyebrow { margin: 0 0 12px; }
+.setup-steps > p:last-child { margin: 11px 0 0; color: #617568; font-size: 13px; }
+.setup-step-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.setup-step-tabs button { display: grid; grid-template-columns: 31px 1fr; column-gap: 9px; align-items: center; min-width: 0; padding: 12px; border: 1px solid #d4e0d2; border-radius: 11px; background: #fff; color: #214b39; box-shadow: none; text-align: left; }
+.setup-step-tabs button:hover { border-color: #8eb59a; background: #f8fbf6; transform: none; }
+.setup-step-tabs button.active { border-color: #214b39; background: #e5f0e3; box-shadow: 0 0 0 2px #214b391c; }
+.setup-step-tabs button > span { grid-row: span 2; display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; background: #e9efe7; color: #214b39; font-size: 13px; }
+.setup-step-tabs button.active > span { background: #214b39; color: white; }
+.setup-step-tabs button strong { font-size: 14px; }
+.setup-step-tabs button small { color: #65796d; font-size: 11px; font-weight: 500; }
+.setup-step-actions { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.setup-review { margin: 16px 0; }
+.setup-review h2 { margin: 5px 0 15px; }
+.setup-review > p:last-of-type { margin: 14px 0; color: #8c4f29; }
+.setup-review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.setup-review-grid button { display: grid; gap: 5px; padding: 15px; border: 1px solid #d7e3d6; background: #f5f9f3; color: #214b39; box-shadow: none; text-align: left; }
+.setup-review-grid button:hover { background: #e9f2e6; transform: none; }
+.setup-review-grid span { font-size: 12px; font-weight: 500; }
+.workspace-jumps button { min-width: 0; padding: 7px 12px; border-radius: 9px; background: transparent; color: #345542; box-shadow: none; font-size: .82rem; }
+.workspace-jumps button:hover { background: #e5eee3; color: #193b2d; transform: none; }
+.round-corrections { margin: 18px 0; }
+.round-corrections h2 { font-size: 23px; margin-bottom: 7px; }
+.round-corrections > p { font-size: 13px; line-height: 1.5; }
+.correction-list { display: grid; gap: 8px; max-height: 310px; overflow-y: auto; }
+.correction-list > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid #e7ece4; }
+.correction-list span { display: grid; gap: 2px; min-width: 0; }
+.correction-list strong { overflow-wrap: anywhere; }
+.correction-list small { color: #68776c; }
+.correction-list button { flex: none; font-size: 12px; }
+.site-back-button { position: fixed; z-index: 90; left: 18px; bottom: 18px; min-height: 42px; display: inline-flex; align-items: center; padding: 9px 15px; border: 1px solid #cfdccd; border-radius: 999px; background: #fff; box-shadow: 0 8px 24px #19372a25; color: #214b39; font-size: 13px; font-weight: 800; }
+.site-back-button:hover { background: #e9f1e7; }
+@media (max-width: 700px) {
+  .setup-steps { padding: 13px; }
+  .setup-step-tabs { gap: 5px; }
+  .setup-step-tabs button { grid-template-columns: 1fr; gap: 4px; padding: 9px 6px; text-align: center; }
+  .setup-step-tabs button > span { grid-row: auto; justify-self: center; width: 25px; height: 25px; }
+  .setup-step-tabs button strong { font-size: 12px; }
+  .setup-step-tabs button small { font-size: 10px; }
+  .setup-review-grid { grid-template-columns: 1fr; }
+  .site-back-button { left: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); }
+}

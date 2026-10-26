@@ -150,6 +150,7 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
     }
     case 'start': {
       if (event.status !== 'DRAFT' || !event.entries.length) throw new Error('Add entries before starting.');
+      if (!event.participants.length) throw new Error('Add at least one bidder before starting.');
       if (data.order === 'shuffle' || data.order === 'hidden') for (let i = event.entries.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [event.entries[i], event.entries[j]] = [event.entries[j], event.entries[i]]; }
       event.entries.forEach((entry, index) => { entry.position = index; });
       event.status = 'LIVE'; event.timerEndsAt = event.roundMode === 'TIMED' ? new Date(Date.now() + event.roundDurationSeconds * 1000).toISOString() : null; event.orderMode = data.order === 'hidden' ? 'HIDDEN' : data.order === 'shuffle' ? 'SHUFFLED' : 'ORDERED'; break;
@@ -252,6 +253,20 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
     case 'unsold': {
       const entry = current(event, String(data.entryId));
       entry.status = 'UNSOLD'; entry.saleMode = event.roundMode; finish(event); break;
+    }
+    case 'reopenRound': {
+      if (!['PAUSED', 'COMPLETED'].includes(event.status)) throw new Error('Pause the auction before correcting a previous round.');
+      const entry = event.entries.find(item => item.id === data.entryId);
+      if (!entry || entry.status === 'PENDING') throw new Error('Choose a completed round to correct.');
+      const currentEntry = event.entries.find(item => item.status === 'PENDING');
+      if (currentEntry && event.bids.some(bid => bid.entryId === currentEntry.id)) throw new Error('Close or skip the current round before correcting an earlier one.');
+      event.bids = event.bids.filter(bid => bid.entryId !== entry.id);
+      entry.position = (currentEntry?.position ?? entry.position) - 1;
+      event.entries.sort((a, b) => a.position - b.position);
+      const previousMode = entry.saleMode;
+      entry.status = 'PENDING'; entry.winner = null; entry.winnerId = null; entry.soldPriceCents = null; entry.saleMode = null;
+      event.status = 'PAUSED'; event.timerEndsAt = null; event.roundMode = previousMode || 'NORMAL';
+      break;
     }
     case 'reset': {
       event.entries.forEach(entry => { entry.status = 'PENDING'; entry.winner = null; entry.winnerId = null; entry.soldPriceCents = null; entry.saleMode = null; });

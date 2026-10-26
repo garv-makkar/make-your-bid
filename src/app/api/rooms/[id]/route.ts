@@ -66,10 +66,10 @@ export const GET = (request: Request, context: Context) => api(async () => {
   return Response.json({
     id: event.id, name: event.name, category: event.category, status: event.status, version: event.version, startingBudgetCents: event.startingBudgetCents, timerEndsAt: event.timerEndsAt, roundMode: event.roundMode, roundDurationSeconds: event.roundDurationSeconds, orderMode: event.orderMode,
     joinCode: host ? event.joinCode : null,
-    approvedCount: event.participants.filter(participant => participant.status === 'APPROVED').length,
+    approvedCount: event.participants.filter(participant => participant.status === 'APPROVED' && participant.userId !== event.ownerId).length,
     pendingCount: host ? event.participants.filter(participant => participant.status === 'PENDING').length : 0,
     role: host ? 'HOST' : me?.status || 'VISITOR',
-    balance: me ? { budgetCents: me.budgetCents, remainingCents: me.budgetCents - spent(user.id), won: event.entries.filter(entry => entry.winnerId === user.id).map(entry => ({ name: entry.name, priceCents: entry.soldPriceCents })) } : null,
+    balance: !host && me ? { budgetCents: me.budgetCents, remainingCents: me.budgetCents - spent(user.id), won: event.entries.filter(entry => entry.winnerId === user.id).map(entry => ({ name: entry.name, priceCents: entry.soldPriceCents })) } : null,
     current: current ? { id: current.id, name: current.name, basePriceCents: current.basePriceCents, imageUrl: current.imageUrl } : null,
     leading: leading && event.roundMode !== 'SEALED' ? { amountCents: leading.amountCents, bidderName: leading.bidderName, mine: leading.bidderId === user.id } : null,
     myOfferCents: canView ? latest.get(user.id)?.amountCents ?? null : null,
@@ -110,19 +110,9 @@ export const POST = (request: Request, context: Context) => api(async () => {
   const host = event.ownerId === user.id;
   if (action.action === 'join') {
     if (event.status === 'COMPLETED') throw new HttpError(409, 'This auction has already finished.');
+    if (host) throw new HttpError(403, 'Hosts cannot bid in online auctions. Create a local auction to participate as a bidder.');
     const opened = await db.event.findUnique({ where: { id }, select: { joinCode: true, startingBudgetCents: true } });
     if (!opened?.joinCode || !await db.entry.count({ where: { eventId: id } })) throw new HttpError(409, 'The host must add entries and open the room first.');
-    if (host) {
-      await db.$transaction(async tx => {
-        await tx.participant.upsert({
-          where: { eventId_userId: { eventId: id, userId: user.id } },
-          create: { eventId: id, userId: user.id, name: user.name, status: 'APPROVED', budgetCents: opened.startingBudgetCents },
-          update: { status: 'APPROVED' },
-        });
-        await tx.event.update({ where: { id }, data: { version: { increment: 1 } } });
-      });
-      return Response.json({ ok: true });
-    }
     await db.$transaction([
       db.participant.upsert({ where: { eventId_userId: { eventId: id, userId: user.id } }, create: { eventId: id, userId: user.id, name: user.name, budgetCents: event.startingBudgetCents }, update: {} }),
       db.event.update({ where: { id }, data: { version: { increment: 1 } } }),
@@ -193,6 +183,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
     const current = await tx.entry.findFirst({ where: { eventId: id, status: 'PENDING' }, orderBy: { position: 'asc' } });
     if (!current || current.id !== action.entryId) throw new HttpError(409, 'This entry is no longer open.');
     if (action.action === 'bid') {
+      if (host) throw new HttpError(403, 'Hosts cannot bid in online auctions.');
       const participant = await tx.participant.findUnique({ where: { eventId_userId: { eventId: id, userId: user.id } } });
       if (!participant || participant.status !== 'APPROVED') throw new HttpError(403, 'Host approval is required to bid.');
       const bids = await activeBids(tx, current.id);

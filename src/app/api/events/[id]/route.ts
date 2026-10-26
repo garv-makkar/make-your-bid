@@ -39,6 +39,7 @@ const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('recordBid'), entryId: z.string(), bidder: z.string().trim().min(1).max(120), bidderId: z.string().optional(), amount: priceSchema }),
   z.object({ action: z.literal('awardBids'), entryId: z.string() }),
   z.object({ action: z.literal('settleTimed'), entryId: z.string() }),
+  z.object({ action: z.literal('reopenRound'), entryId: z.string() }),
   z.object({ action: z.literal('reset') }),
   z.object({ action: z.literal('delete') }),
 ]);
@@ -172,8 +173,9 @@ export const POST = (request: Request, context: Context) => api(async () => {
       }
       case 'start': {
         if (event.status !== 'DRAFT' || !event.entries.length) throw new HttpError(409, 'Add entries to a draft event before starting.');
+        if (event.mode === 'LOCAL' && !event.participants.length) throw new HttpError(409, 'Add at least one bidder before starting.');
         if (event.mode === 'ONLINE' && !event.joinCode) throw new HttpError(409, 'Open the bidding room before starting the online auction.');
-        if (event.mode === 'ONLINE' && !event.participants.some(person => person.status === 'APPROVED')) throw new HttpError(409, 'Approve at least one bidder before starting the online auction.');
+        if (event.mode === 'ONLINE' && !event.participants.some(person => person.status === 'APPROVED' && person.userId !== ownerId)) throw new HttpError(409, 'Approve at least one bidder before starting the online auction.');
         if (command.order === 'shuffle' || command.order === 'hidden') {
           const entries = [...event.entries];
           for (let i = entries.length - 1; i > 0; i--) { const j = randomInt(i + 1); [entries[i], entries[j]] = [entries[j], entries[i]]; }
@@ -257,6 +259,17 @@ export const POST = (request: Request, context: Context) => api(async () => {
         const current = event.entries.find(e => e.status === 'PENDING');
         if (current && await tx.bid.count({ where: { entryId: current.id } })) throw new HttpError(409, 'Change the timer before anyone bids.');
         await tx.event.update({ where: { id }, data: { roundDurationSeconds: command.seconds, timerEndsAt: event.roundMode === 'TIMED' && event.status === 'LIVE' ? new Date(Date.now() + command.seconds * 1000) : null } });
+        break;
+      }
+      case 'reopenRound': {
+        if (!['PAUSED', 'COMPLETED'].includes(event.status)) throw new HttpError(409, 'Pause the auction before correcting a previous round.');
+        const entry = event.entries.find(item => item.id === command.entryId);
+        if (!entry || entry.status === 'PENDING') throw new HttpError(409, 'Choose a completed round to correct.');
+        const current = event.entries.find(item => item.status === 'PENDING');
+        if (current && await tx.bid.count({ where: { entryId: current.id } })) throw new HttpError(409, 'Close or skip the current round before correcting an earlier one.');
+        await tx.bid.deleteMany({ where: { entryId: entry.id } });
+        await tx.entry.update({ where: { id: entry.id }, data: { status: 'PENDING', winner: null, winnerId: null, soldPriceCents: null, saleMode: null, position: (current?.position ?? entry.position) - 1 } });
+        await tx.event.update({ where: { id }, data: { status: 'PAUSED', timerEndsAt: null, roundMode: entry.saleMode || 'NORMAL' } });
         break;
       }
       case 'reset':
