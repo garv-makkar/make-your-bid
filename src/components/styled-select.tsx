@@ -4,7 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
 type Option = { value: string; label: string; description?: string };
 
-export function StyledSelect({ label, value, options, onChange }: { label: string; value: string; options: Option[]; onChange: (value: string) => void }) {
+export function StyledSelect({ label, value, options, onChange, disabled = false }: { label: string; value: string; options: Option[]; onChange: (value: string) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [openAbove, setOpenAbove] = useState(false);
   const id = useId();
@@ -47,7 +47,7 @@ export function StyledSelect({ label, value, options, onChange }: { label: strin
 
   return <div className="styled-select" ref={root} onKeyDown={handleKey} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false); }}>
     <span className="styled-select-label" id={`${id}-label`}>{label}</span>
-    <div className="styled-select-control"><button ref={trigger} type="button" className="styled-select-trigger" role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}-options`} aria-labelledby={`${id}-label ${id}-value`} onClick={() => setOpen((current) => !current)} onKeyDown={(event) => { if (!open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) { event.preventDefault(); setOpen(true); } }}>
+    <div className="styled-select-control"><button ref={trigger} type="button" className="styled-select-trigger" role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}-options`} aria-labelledby={`${id}-label ${id}-value`} disabled={disabled} onClick={() => setOpen((current) => !current)} onKeyDown={(event) => { if (!open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) { event.preventDefault(); setOpen(true); } }}>
       <span id={`${id}-value`}>{selected?.label}</span><svg aria-hidden="true" viewBox="0 0 16 16"><path d="m3 6 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
     </button>
     {open && <div ref={menu} className={`styled-select-menu${openAbove ? ' is-above' : ''}`} id={`${id}-options`} role="listbox" aria-labelledby={`${id}-label`}>

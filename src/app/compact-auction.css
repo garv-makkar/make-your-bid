@@ -1,0 +1,183 @@
+/* Keep the primary auction actions in view on a laptop. Long rosters scroll within their cards. */
+@media (min-width: 900px) {
+  .shell { max-width: 1400px; }
+  main.shell:has(> .dashboard-hero) > .dashboard-hero { padding: 8px 0 0; }
+  main.shell:has(> .dashboard-hero) > .dashboard-hero h1 { font-size: clamp(30px, 2.7vw, 39px); margin: 2px 0 4px; }
+  main.shell.account-dashboard-page:has(> .dashboard-hero),
+  main.shell.local-dashboard-page:has(> .dashboard-hero) { gap: 10px 20px; }
+  main.shell.account-dashboard-page > .create-panel,
+  main.shell.local-dashboard-page > .create-panel { padding: 16px 20px; }
+  .create-panel-heading { margin-bottom: 9px; }
+  .create-panel-heading h3 { font-size: 25px; }
+  .create-panel .create-form { gap: 8px 16px; }
+  .create-panel .auction-type-options button { min-height: 64px; padding: 8px 12px; }
+  .create-panel .create-form input,
+  .create-panel .styled-select-trigger { min-height: 45px; }
+  main.shell.account-dashboard-page > .join-code-panel { padding: 16px; }
+  main.shell.account-dashboard-page > .join-code-panel h2 { font-size: 25px; }
+  main.shell.account-dashboard-page > .join-code-panel p { margin-bottom: 9px; }
+  .auction-workspace .workspace-header,
+  .room-shell .room-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0 8px; }
+  .auction-workspace .workspace-header > div:first-child,
+  .room-shell .room-heading > div:first-child { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+  .auction-workspace .workspace-header .eyebrow,
+  .room-shell .room-heading .eyebrow { margin: 0; white-space: nowrap; font-size: 11px; }
+  .auction-workspace .workspace-header h1,
+  .room-shell .room-heading h1 { margin: 0; font-size: clamp(28px, 2.4vw, 38px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .auction-workspace .workspace-header .status,
+  .room-shell .room-heading .status { white-space: nowrap; }
+  .auction-workspace.workspace-step-entries > .stats,
+  .auction-workspace.workspace-step-bidders > .stats,
+  .auction-workspace.workspace-step-review > .stats { display: none; }
+  .auction-workspace .stats,
+  .room-shell .room-stats { display: flex; gap: 8px; margin: 4px 0 8px; }
+  .auction-workspace .stats > div,
+  .room-shell .room-stats > div { display: flex; align-items: baseline; gap: 8px; flex: 0 1 auto; min-width: 0; padding: 6px 12px; border-radius: 9px; }
+  .auction-workspace .stats small,
+  .room-shell .room-stats small { font-size: 10px; }
+  .auction-workspace .stats strong,
+  .room-shell .room-stats strong { font-size: 18px; line-height: 1; }
+  .auction-workspace .setup-steps { display: flex; align-items: center; gap: 14px; margin: 4px 0 10px; padding: 7px 10px; }
+  .auction-workspace .setup-steps > .eyebrow,
+  .auction-workspace .setup-steps > p:last-child { display: none; }
+  .auction-workspace .setup-step-tabs { display: flex; width: 100%; gap: 8px; }
+  .auction-workspace .setup-step-tabs button { display: flex; flex: 1; align-items: center; gap: 8px; min-height: 42px; padding: 5px 9px; }
+  .auction-workspace .setup-step-tabs button > span { width: 25px; height: 25px; }
+  .auction-workspace .setup-step-tabs button small { margin-left: auto; }
+  .auction-workspace .workspace-body,
+  .room-shell .room-body { gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(270px, 30%); }
+  .auction-workspace .workspace-main,
+  .room-shell .room-main { gap: 10px; }
+  .auction-workspace .workspace-main > .panel,
+  .room-shell .room-main > .panel { padding: 16px 19px; }
+  .auction-workspace .workspace-aside { position: static; max-height: none; overflow: visible; }
+  .auction-workspace .progress-panel,
+  .room-shell .progress-panel { padding: 14px; }
+  .auction-workspace .progress-heading,
+  .room-shell .progress-heading { margin-bottom: 7px; }
+  .auction-workspace .progress-heading h2,
+  .room-shell .progress-heading h2 { font-size: 22px; }
+  .auction-workspace .progress-help,
+  .room-shell .progress-help { display: none; }
+  .auction-workspace .progress-key,
+  .room-shell .progress-key { margin: 7px 0; }
+  .auction-workspace .progress-list,
+  .room-shell .progress-list { max-height: min(38vh, 300px); gap: 5px; }
+  .auction-workspace .progress-item,
+  .room-shell .progress-item { padding: 7px 9px; }
+  .auction-workspace .entry-manage .entry-list { max-height: min(36vh, 300px); }
+  .auction-workspace .workspace-jumps { position: static; margin: 5px 0 10px; padding: 4px; }
+  .auction-workspace .round-mode-disclosure,
+  .room-shell .round-mode-disclosure { margin: 0 0 8px; padding: 0; border: 1px solid #d8e5d6; border-radius: 12px; background: #f5f9f3; }
+  .auction-workspace .round-mode-disclosure > summary,
+  .room-shell .round-mode-disclosure > summary { cursor: pointer; padding: 9px 14px; color: #214b39; font-weight: 700; }
+  .auction-workspace .round-mode-disclosure .round-picker,
+  .room-shell .round-mode-disclosure .round-picker { margin: 0 8px 8px; padding: 12px; }
+  .auction-workspace .current h2,
+  .room-shell .round-content h2 { font-size: 30px; margin: 0 0 3px; }
+  .auction-workspace .current-grid,
+  .room-shell .round-content { gap: 14px; margin-top: 8px; }
+  .auction-workspace .current-grid > img,
+  .room-shell .round-content > img { width: 130px; height: 130px; object-fit: cover; }
+  .auction-workspace .current p,
+  .room-shell .round-content p { margin-bottom: 8px; }
+  .auction-workspace .current .bid-form,
+  .room-shell .round-card .bid-form { margin-top: 10px; }
+  .auction-workspace .round-rules,
+  .room-shell .round-rules { margin: 8px 0; padding: 8px 12px; }
+  .auction-workspace .round-corrections,
+  .room-shell .round-corrections { margin: 8px 0; padding: 0; }
+  .auction-workspace .round-corrections > summary,
+  .room-shell .round-corrections > summary { cursor: pointer; padding: 10px 13px; color: #214b39; font-weight: 700; }
+  .auction-workspace .round-corrections > :not(summary),
+  .room-shell .round-corrections > :not(summary) { margin: 8px 13px 12px; }
+  .auction-workspace .workspace-footer { margin-top: 9px; }
+  .room-shell .room-stage { margin-bottom: 8px; padding: 11px 16px; }
+  .room-shell .room-stage-steps { margin-bottom: 7px; padding-bottom: 7px; }
+  .room-shell .room-stage-body h2 { font-size: 23px; }
+  .room-shell .room-stage-action { margin-top: 8px; padding-top: 8px; }
+  .room-shell .room-invite-code { padding: 8px 12px; }
+  .room-shell .host-tools { gap: 10px; margin: 7px 0; }
+  .room-shell .host-tools .panel { padding: 13px 16px; }
+  .room-shell .host-tools .panel h2 { font-size: 21px; }
+  .room-shell .highest { margin: 8px 0; padding: 10px; }
+  .room-shell .owned-panel { margin-top: 0; }
+}
+
+.bid-form .styled-select { min-width: 0; }
+.bid-inline-error { margin: 8px 0 0 !important; padding: 8px 12px; border: 1px solid #e7ada4; border-radius: 9px; background: #fff1ed; color: #ab3426; font-size: 14px; font-weight: 700; }
+.round-mode-disclosure > summary::marker,
+.round-corrections > summary::marker { color: #65816d; }
+
+.start-auction-shell { display: flex; flex-direction: column; }
+.start-screen { flex: 1; display: grid; align-content: center; gap: 22px; max-width: 1100px; width: 100%; margin: 0 auto; padding: 18px 0; }
+.start-screen-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+.start-screen-heading h1 { margin: 3px 0 5px; font: 700 clamp(32px, 4vw, 50px)/1.12 'Playfair Display', Georgia, serif; color: #173c2c; }
+.start-screen-heading p:last-child { margin: 0; color: #62756a; }
+.start-screen-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+.start-option { display: grid; align-content: start; gap: 10px; min-height: 215px; padding: 22px; border: 1px solid #d4e2d1; border-radius: 16px; background: #fff; color: #214b39; text-align: left; box-shadow: none; }
+.start-option.selected { border: 2px solid #214b39; background: #eaf3e8; padding: 21px; }
+.start-option-mark { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid #9bb6a1; border-radius: 50%; color: #fff; }
+.start-option.selected .start-option-mark { background: #214b39; }
+.start-option strong { font-size: 22px; }
+.start-option span:not(.start-option-mark) { font-size: 15px; line-height: 1.4; }
+.start-option small { color: #64796a; }
+.start-screen-actions { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.start-screen-actions p { margin: 0; color: #64796a; }
+.start-screen-actions button { min-width: 210px; }
+
+@media (max-width: 899px) {
+  .start-screen { align-content: start; }
+  .start-screen-heading { align-items: start; flex-direction: column; }
+  .start-screen-options { grid-template-columns: 1fr; }
+  .start-option { min-height: 0; padding: 16px; }
+  .start-option.selected { padding: 15px; }
+  .start-screen-actions { align-items: stretch; flex-direction: column; }
+  .round-mode-disclosure > summary,
+  .round-corrections > summary { padding: 12px; }
+}
+.progress-item { position: relative; }
+.progress-item:has(.progress-select) { cursor: pointer; }
+.progress-item:has(.progress-select):hover, .progress-item.is-selected { border-color: #4b8260; background: #edf6eb; }
+.progress-select { position: absolute; inset: 0; z-index: 1; width: 100%; min-height: 0; padding: 0; border: 0; border-radius: inherit; background: transparent; box-shadow: none !important; }
+.progress-select:hover { background: transparent; transform: none !important; }
+.progress-edit-hint { color: #245338; font-size: 11px; font-weight: 800; }
+.result-editor { margin-top: 10px; padding: 15px; border: 1px solid #b9d2b9; border-radius: 14px; background: #fff; box-shadow: 0 8px 25px #20392a12; }
+.result-editor-heading { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.result-editor-heading .eyebrow { margin: 0; font-size: 10px; }
+.result-editor-heading h3 { margin: 3px 0 0; font: 700 22px/1.15 'Playfair Display', Georgia, serif; color: #173c2c; }
+.result-editor > p { margin: 7px 0 11px; color: #607263; font-size: 13px; }
+.result-editor form { display: grid; gap: 9px; }
+.result-editor form .styled-select { min-width: 0; }
+.result-editor form input { width: 100%; min-height: 41px; }
+.result-editor form .button-row { gap: 6px; }
+.result-editor form .button-row button { min-height: 40px; padding: 8px 12px; font-size: 13px; }
+.result-editor .bid-inline-error { margin: 0 !important; }
+@media (min-width: 900px) {
+  .auction-workspace .workspace-aside:has(.result-editor), .room-shell .room-aside:has(.result-editor) { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; }
+  .auction-workspace .workspace-aside:has(.result-editor) .progress-list, .room-shell .room-aside:has(.result-editor) .progress-list { max-height: min(23vh, 180px); }
+}
+
+@media (min-width: 900px) { .room-shell.room-status-draft .room-stats, .room-shell.room-status-draft .room-body { display: none; } }
+@media (min-width: 900px) {
+  .auction-workspace .workspace-aside, .room-shell .room-aside { position: relative; }
+  .auction-workspace .workspace-aside .result-editor, .room-shell .room-aside .result-editor { position: absolute; top: 0; left: 0; right: 0; z-index: 30; margin: 0; box-shadow: 0 18px 42px #173c2c3b; }
+}
+@media (min-width: 900px) {
+  .auction-workspace.workspace-step-entries .entry-editor-disclosure { margin: 0; }
+  .auction-workspace.workspace-step-entries .entry-editor-disclosure .entry-editor { padding: 5px 14px 12px; }
+  .auction-workspace.workspace-step-entries .entry-mode-tabs { margin: 6px 0 9px; }
+  .auction-workspace.workspace-step-entries .entry-mode-tabs button { min-height: 38px; padding: 6px 11px; }
+  .auction-workspace.workspace-step-entries .entry-single-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: end; max-width: none; gap: 7px 12px; }
+  .auction-workspace.workspace-step-entries .entry-single-form > label, .auction-workspace.workspace-step-entries .entry-single-form > .entry-sports-fields { min-width: 0; margin: 0; }
+  .auction-workspace.workspace-step-entries .entry-single-form > .entry-sports-fields { grid-column: 1 / -1; gap: 12px; }
+  .auction-workspace.workspace-step-entries .entry-single-form input, .auction-workspace.workspace-step-entries .entry-single-form textarea, .auction-workspace.workspace-step-entries .entry-single-form .styled-select-trigger { min-height: 40px; }
+  .auction-workspace.workspace-step-entries .entry-single-form textarea { height: 48px; min-height: 48px; }
+  .auction-workspace.workspace-step-entries .entry-single-form .file-label { grid-column: 1; }
+  .auction-workspace.workspace-step-entries .entry-single-form > .button-row { grid-column: 2; justify-content: flex-end; align-self: end; margin: 0; }
+  .auction-workspace.workspace-step-entries .entry-single-form > .entry-preview-image { grid-column: 1; }
+  .auction-workspace.workspace-step-entries .workspace-aside .entry-manage { margin-top: 0; }
+  .auction-workspace.workspace-step-entries .workspace-footer { margin-top: 4px; }
+  .auction-workspace.workspace-step-entries .setup-step-actions { margin: 6px 0; }
+}
+.room-shell.room-status-draft .room-stats, .room-shell.room-status-draft .room-body { display: none; }

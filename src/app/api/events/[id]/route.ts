@@ -40,6 +40,7 @@ const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('awardBids'), entryId: z.string() }),
   z.object({ action: z.literal('settleTimed'), entryId: z.string() }),
   z.object({ action: z.literal('reopenRound'), entryId: z.string() }),
+  z.object({ action: z.literal('correctResult'), entryId: z.string(), winnerId: z.string(), price: priceSchema }),
   z.object({ action: z.literal('reset') }),
   z.object({ action: z.literal('delete') }),
 ]);
@@ -59,10 +60,10 @@ export const POST = (request: Request, context: Context) => api(async () => {
       throw new HttpError(exists ? 409 : 404, exists ? 'This event changed in another tab. Reload and try again.' : 'Event not found.');
     }
     const event = await tx.event.findUniqueOrThrow({ where: { id }, include: { entries: { orderBy: { position: 'asc' } }, participants: { orderBy: { createdAt: 'asc' } } } });
-    if (event.mode === 'ONLINE' && event.status === 'LIVE' && event.timerEndsAt && event.timerEndsAt <= new Date()) {
+    if (event.mode === 'ONLINE' && event.status === 'LIVE' && event.timerEndsAt && event.timerEndsAt <= new Date() && command.action !== 'correctResult') {
       throw new HttpError(409, 'The timer ended. Open the bidding room to settle this round.');
     }
-    if (event.mode === 'LOCAL' && event.status === 'LIVE' && event.roundMode === 'TIMED' && event.timerEndsAt && event.timerEndsAt <= new Date() && command.action !== 'settleTimed') throw new HttpError(409, 'The timer ended. Settle the timed round.');
+    if (event.mode === 'LOCAL' && event.status === 'LIVE' && event.roundMode === 'TIMED' && event.timerEndsAt && event.timerEndsAt <= new Date() && command.action !== 'settleTimed' && command.action !== 'correctResult') throw new HttpError(409, 'The timer ended. Settle the timed round.');
     const editable = () => { if (!['DRAFT', 'PAUSED'].includes(event.status)) throw new HttpError(409, 'Pause bidding before managing entries. Completed events must be reset first.'); };
     const pendingEntry = (entryId: string) => {
       const entry = event.entries.find(e => e.id === entryId);
@@ -270,6 +271,29 @@ export const POST = (request: Request, context: Context) => api(async () => {
         await tx.bid.deleteMany({ where: { entryId: entry.id } });
         await tx.entry.update({ where: { id: entry.id }, data: { status: 'PENDING', winner: null, winnerId: null, soldPriceCents: null, saleMode: null, position: (current?.position ?? entry.position) - 1 } });
         await tx.event.update({ where: { id }, data: { status: 'PAUSED', timerEndsAt: null, roundMode: entry.saleMode || 'NORMAL' } });
+        break;
+      }
+      case 'correctResult': {
+        if (!['LIVE', 'PAUSED', 'COMPLETED'].includes(event.status)) throw new HttpError(409, 'Start the auction before editing a result.');
+        const entry = event.entries.find(item => item.id === command.entryId);
+        if (!entry || entry.status !== 'SOLD') throw new HttpError(409, 'Choose a sold entry to edit.');
+        const bidder = event.participants.find(person => person.userId === command.winnerId && person.status === 'APPROVED');
+        if (!bidder) throw new HttpError(400, 'Choose a bidder from the roster.');
+        if (command.price < entry.basePriceCents) throw new HttpError(400, 'Sold price cannot be below the base price.');
+        if (entry.saleMode === 'REVERSE') {
+          const previous = (await activeBids(tx, entry.id)).find(bid => bid.bidderId === bidder.userId);
+          const available = await remainingBudget(tx, id, bidder.userId, bidder.budgetCents) + (previous?.chargedCents || 0);
+          if (command.price > available) throw new HttpError(400, 'Sold price exceeds this bidder’s remaining units.');
+          if (previous) await tx.bid.update({ where: { id: previous.id }, data: { amountCents: command.price, chargedCents: command.price } });
+          else await tx.bid.create({ data: { eventId: id, entryId: entry.id, bidderId: bidder.userId, bidderName: bidder.name, amountCents: command.price, chargedCents: command.price } });
+        } else {
+          const available = await remainingBudget(tx, id, bidder.userId, bidder.budgetCents) + (entry.winnerId === bidder.userId ? entry.soldPriceCents || 0 : 0);
+          if (command.price > available) throw new HttpError(400, 'Sold price exceeds this bidder’s remaining units.');
+          const previous = (await activeBids(tx, entry.id)).find(bid => bid.bidderId === bidder.userId);
+          if (previous) await tx.bid.update({ where: { id: previous.id }, data: { amountCents: command.price } });
+          else if (entry.saleMode === 'SEALED' || entry.saleMode === 'TIMED') await tx.bid.create({ data: { eventId: id, entryId: entry.id, bidderId: bidder.userId, bidderName: bidder.name, amountCents: command.price } });
+        }
+        await tx.entry.update({ where: { id: entry.id }, data: { winner: bidder.name, winnerId: bidder.userId, soldPriceCents: command.price } });
         break;
       }
       case 'reset':

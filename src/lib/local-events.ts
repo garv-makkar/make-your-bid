@@ -69,7 +69,7 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
   const events = all();
   const event = events.find(item => item.id === id);
   if (!event) throw new Error('Local event not found in this browser.');
-  if (event.status === 'LIVE' && event.roundMode === 'TIMED' && event.timerEndsAt && Date.now() >= new Date(event.timerEndsAt).getTime() && data.action !== 'settleTimed') throw new Error('The timer ended. Settle the timed round.');
+  if (event.status === 'LIVE' && event.roundMode === 'TIMED' && event.timerEndsAt && Date.now() >= new Date(event.timerEndsAt).getTime() && data.action !== 'settleTimed' && data.action !== 'correctResult') throw new Error('The timer ended. Settle the timed round.');
   const editable = () => { if (!['DRAFT', 'PAUSED'].includes(event.status)) throw new Error('Pause bidding to edit entries.'); };
   const entryInput = data.entry;
   const entryDetails = () => localEntry(entryInput);
@@ -273,6 +273,25 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
       const previousMode = entry.saleMode;
       entry.status = 'PENDING'; entry.winner = null; entry.winnerId = null; entry.soldPriceCents = null; entry.saleMode = null;
       event.status = 'PAUSED'; event.timerEndsAt = null; event.roundMode = previousMode || 'NORMAL';
+      break;
+    }
+    case 'correctResult': {
+      if (!['LIVE', 'PAUSED', 'COMPLETED'].includes(event.status)) throw new Error('Start the auction before editing a result.');
+      const entry = event.entries.find(item => item.id === data.entryId);
+      if (!entry || entry.status !== 'SOLD') throw new Error('Choose a sold entry to edit.');
+      const bidder = event.participants.find(person => person.userId === data.winnerId && person.status === 'APPROVED');
+      if (!bidder) throw new Error('Choose a bidder from the roster.');
+      const price = priceSchema.parse(data.price);
+      if (price < entry.basePriceCents) throw new Error('Sold price cannot be below the base price.');
+      const previous = event.bids.filter(bid => bid.entryId === entry.id && bid.bidderId === bidder.userId).at(-1);
+      const available = remaining(event, bidder.userId) + (entry.saleMode === 'REVERSE' ? previous?.chargedCents || 0 : entry.winnerId === bidder.userId ? entry.soldPriceCents || 0 : 0);
+      if (price > available) throw new Error('Sold price exceeds this bidder’s remaining units.');
+      if (entry.saleMode === 'REVERSE') {
+        if (previous) { previous.amountCents = price; previous.chargedCents = price; }
+        else event.bids.push({ id: crypto.randomUUID(), entryId: entry.id, bidderId: bidder.userId, bidderName: bidder.name, amountCents: price, chargedCents: price });
+      } else if (previous) previous.amountCents = price;
+      else if (entry.saleMode === 'SEALED' || entry.saleMode === 'TIMED') event.bids.push({ id: crypto.randomUUID(), entryId: entry.id, bidderId: bidder.userId, bidderName: bidder.name, amountCents: price, chargedCents: 0 });
+      entry.winner = bidder.name; entry.winnerId = bidder.userId; entry.soldPriceCents = price;
       break;
     }
     case 'reset': {
