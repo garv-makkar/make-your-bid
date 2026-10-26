@@ -27,6 +27,10 @@ Commit code and any new `prisma/migrations` directory, then push to `main`. Verc
 
 Schema changes run before the new application version becomes live. Prefer additive migrations that remain compatible with the currently deployed version. Rolling back code does not roll back the database; correct a schema issue with a new forward migration.
 
+## One-time SQL Editor catch-up
+
+If the production database has missed any of the migrations through `20261026000000_sports_entries`, run the complete [Supabase catch-up script](scripts/supabase-catch-up-through-20261026.sql) in that project's SQL Editor before deploying the matching code. The script adds missing schema objects without deleting event data, and records the six matching Prisma migrations so the next Vercel build will skip them. It aborts on an incompatible migration history or schema error. Keep all original `prisma/migrations` files in the repository; later deployments continue to use them.
+
 ## Verify a deployment
 
 1. Check the Vercel build log for `Applying pending production database migrations...`, then a successful Next.js build.
