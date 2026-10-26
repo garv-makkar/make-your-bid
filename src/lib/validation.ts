@@ -18,8 +18,12 @@ export const entrySchema = z.object({
   name: z.string().trim().min(1, 'Name is required.').max(120),
   basePrice: priceSchema.default(1),
   imageUrl: imageSchema,
+  description: z.string().trim().max(1000).default(''),
+  role: z.string().trim().max(80).default(''),
+  specialty: z.string().trim().max(120).default(''),
 });
-export const eventSchema = z.object({ name: z.string().trim().min(1).max(120), category: z.enum(['Players', 'Items', 'Other']) });
+export const eventSchema = z.object({ name: z.string().trim().min(1).max(120), category: z.enum(['Football', 'Cricket', 'Other sport', 'Basic', 'Players', 'Items', 'Other']) });
+export const isSportsCategory = (category: string) => ['Football', 'Cricket', 'Other sport'].includes(category);
 export type EntryInput = z.input<typeof entrySchema>;
 
 export function parseCsv(text: string) {
@@ -34,8 +38,8 @@ export function parseCsv(text: string) {
   if (!data.length || data.length > MAX_ENTRIES) throw new Error(`CSV must contain 1–${MAX_ENTRIES} entries.`);
   return data.map((row, index) => {
     const rowNumber = index + (hasHeader ? 2 : 1);
-    if (row.length < 1 || row.length > 3) throw new Error(`Row ${rowNumber}: expected name, optional base price, optional image link.`);
-    const result = entrySchema.safeParse({ name: row[0], basePrice: row[1] ?? '', imageUrl: row[2] ?? '' });
+    if (row.length < 1 || row.length > 6) throw new Error(`Row ${rowNumber}: expected name, base price, image link, role, advanced role, description (last five optional).`);
+    const result = entrySchema.safeParse({ name: row[0], basePrice: row[1] ?? '', imageUrl: row[2] ?? '', role: row[3] ?? '', specialty: row[4] ?? '', description: row[5] ?? '' });
     if (!result.success) throw new Error(`Row ${rowNumber}: ${result.error.issues[0].message}`);
     if (result.data.imageUrl.startsWith('/')) throw new Error(`Row ${rowNumber}: CSV images must use HTTP(S) links.`);
     return result.data;

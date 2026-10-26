@@ -38,6 +38,9 @@ model Entry {
   name           String
   basePriceCents Int     @default(100)
   imageUrl       String?
+  description    String?
+  role           String?
+  specialty      String?
   position       Int
   status         String  @default("PENDING")
   soldPriceCents Int?

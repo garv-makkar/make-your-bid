@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatPrice } from '@/lib/validation';
 import { roundRules } from '@/lib/round-modes';
+import { EntryFacts } from './entry-facts';
 
 type Bidder = { id: string; userId: string; name: string };
 type Bid = { entryId: string; bidderId: string; bidderName: string; amountCents: number };
-type Entry = { id: string; name: string; basePriceCents: number; imageUrl: string | null };
+type Entry = { id: string; name: string; basePriceCents: number; imageUrl: string | null; description?: string | null; role?: string | null; specialty?: string | null };
 
-export function LocalBidRound({ entry, mode, bidders, bids, timerEndsAt, busy, command }: {
-  entry: Entry; mode: string; bidders: Bidder[]; bids: Bid[]; timerEndsAt: string | null;
+export function LocalBidRound({ entry, category, mode, bidders, bids, timerEndsAt, busy, command }: {
+  entry: Entry; category: string; mode: string; bidders: Bidder[]; bids: Bid[]; timerEndsAt: string | null;
   busy: boolean; command: (data: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [bidder, setBidder] = useState('');
@@ -39,7 +40,7 @@ export function LocalBidRound({ entry, mode, bidders, bids, timerEndsAt, busy, c
     <div className="round-top"><p className="eyebrow">ON THE BLOCK · {roundRules(mode).name.toUpperCase()}</p>{seconds !== null && <strong className="countdown">{seconds}s left</strong>}</div>
     <div className="round-rules"><strong>Rules for this round</strong><p>{roundRules(mode).rules}</p></div>
     <div className="current-grid">{entry.imageUrl && <img src={entry.imageUrl} alt="" />}<div>
-      <h2>{entry.name}</h2><p>Base price: {formatPrice(entry.basePriceCents)} units</p>
+      <h2>{entry.name}</h2><p>Base price: {formatPrice(entry.basePriceCents)} units</p><EntryFacts entry={entry} category={category} />
       <p>{mode === 'SEALED' ? `${offers.length} sealed ${offers.length === 1 ? 'offer' : 'offers'} received. The winning offer appears after this round closes.` : offers.length ? `Leading bid: ${formatPrice(offers[0].amountCents)} units by ${offers[0].bidderName}` : 'No offers yet.'}</p>
       {seconds !== 0 && <form className="bid-form" onSubmit={submit}><label>Bidder{bidders.length ? <select value={bidder} onChange={e => setBidder(e.target.value)} required><option value="">Choose bidder</option>{bidders.map(person => <option key={person.id} value={person.userId}>{person.name}</option>)}</select> : <input value={bidder} onChange={e => setBidder(e.target.value)} maxLength={120} required />}</label><label>Offer<input type="number" min={entry.basePriceCents / 100} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required /></label><button disabled={busy}>Record {mode === 'SEALED' ? 'sealed' : 'timed'} bid</button></form>}
       {mode === 'SEALED' && <button disabled={busy || !offers.length} onClick={() => command({ action: 'awardBids', entryId: entry.id })}>Close bids and award highest</button>}

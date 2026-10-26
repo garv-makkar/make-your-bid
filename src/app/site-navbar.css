@@ -1,21 +1,36 @@
-.site-navbar { min-height: 70px; height: auto; padding: 10px 0; gap: 18px; }
+.site-navbar, .site-footer { box-sizing: border-box; }
+body { min-height: 100dvh; display: flex; flex-direction: column; }
+body > main.shell { flex: 1 0 auto; margin-top: 0; margin-bottom: 0; margin-left: auto; margin-right: auto; }
+main.shell.settings-page, main.shell.profile-page { max-width: 1480px; }
+main.shell.settings-page > :not(.site-navbar), main.shell.profile-page > :not(.site-navbar) { width: min(100%, 1000px); margin-left: auto; margin-right: auto; }
+main.shell.landing { min-height: 0; }
+main.shell.landing, main.shell.settings-page, main.shell.profile-page, main.shell:has(> .auth-card), main.shell:has(> .state-page), main.shell.account-dashboard-page, main.shell:has(> .guest-hero) { padding-bottom: 12px; }
+main.shell:has(> .auth-card), main.shell:has(> .state-page) { display: flex; flex-direction: column; }
+main.shell:has(> .auth-card) > .auth-card, main.shell:has(> .state-page) > .state-page { width: min(100%, 650px); margin: auto; }
+main.shell:has(> .auth-card) > .auth-card { width: min(100%, 500px); }
+main.shell.account-dashboard-page, main.shell:has(> .dashboard-hero) { align-content: start; }
+main.shell:has(> .guest-hero) > .events-section { max-height: calc(100dvh - 165px); }
+.site-navbar { position: sticky; top: 0; z-index: 80; min-height: 70px; height: auto; padding: 10px 0; gap: 18px; background: #f8f9f4ed; backdrop-filter: blur(14px); }
 .site-navbar-left, .site-navbar-links { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.site-navbar-links { justify-content: flex-end; flex-wrap: wrap; }
+.site-navbar .site-navbar-links { justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 .site-navbar-back { flex: none; padding: 8px 11px; border: 1px solid #d6e1d4; border-radius: 999px; color: #214b39; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .site-navbar-back:hover, .site-navbar-links > a:hover { background: #e8f0e5; }
 .site-navbar-links > a { padding: 8px 11px; border-radius: 10px; color: #214b39; font-size: 14px; font-weight: 700; white-space: nowrap; }
 .site-navbar-links > a[aria-current='page'] { background: #e8f0e5; }
 .site-navbar-links > .site-navbar-signin { background: #214b39; color: #fff; }
 .site-navbar-links > .site-navbar-signin:hover { background: #173c2c; }
-.site-footer { width: min(100% - 48px, 1364px); margin: 0 auto; padding: 16px 0 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid #d8dfd3; color: #466354; font-size: 13px; }
+.site-footer { width: min(calc(100% - 2 * clamp(24px, 4vw, 58px)), 1364px); margin: 0 auto; padding: 12px 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid #d8dfd3; color: #466354; font-size: 13px; }
 .site-footer > span { font-family: 'Playfair Display', serif; color: #173c2c; font-size: 18px; font-weight: 700; }
 .site-footer-dot { color: #c55d40; }
 .site-footer nav { display: flex; flex-wrap: wrap; gap: 20px; }
 .site-footer a:hover { color: #173c2c; text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 700px) {
+  body > main.shell { flex: 1 0 auto; }
+  main.shell:has(> .auth-card) > .auth-card, main.shell:has(> .state-page) > .state-page { margin: 24px auto; }
+  main.shell:has(> .guest-hero) > .events-section { max-height: none; }
   .site-navbar { align-items: stretch; flex-wrap: wrap; gap: 6px; padding: 13px 0; }
   .site-navbar-left { width: 100%; justify-content: space-between; }
-  .site-navbar-links { width: 100%; justify-content: flex-start; gap: 3px; }
+  .site-navbar .site-navbar-links { width: 100%; justify-content: flex-start; gap: 3px; margin-left: 0; }
   .site-navbar-links > a { padding: 7px 9px; font-size: 12px; }
   .site-navbar-back { font-size: 12px; }
   .site-footer { width: calc(100% - 32px); padding-bottom: calc(18px + env(safe-area-inset-bottom)); }

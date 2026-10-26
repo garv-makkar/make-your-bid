@@ -1,15 +1,18 @@
 # Make Your Bid
 
-A browser based auction app for running local auctions or live online bidding rooms. Hosts can prepare entries, set base prices, choose normal, reverse, sealed, or timed rounds, and review a bidder grouped summary.
+A browser based auction app built for sports auctions, with a Basic option for other events. Hosts can prepare entries, set base prices, choose normal, reverse, sealed, or timed rounds, and review a bidder grouped summary.
 
 ## How it works
 
 - **Local:** Run an auction in this browser without signing in. Events and uploaded images stay in browser storage. After an online visit, the local workspace works offline through the PWA.
 - **Account:** Sign in with Google to keep events in Supabase Postgres. Account events require internet.
-- **Online room:** Create an online event, add entries and base prices, then open the room. Share its link or 12 character code, approve bidders, and start the auction. The host may also join as a bidder. Bidders can preview entries and base prices before bidding starts.
+- **Sports or Basic:** Choose Football, Cricket, or Other sport, or select Basic for a general auction. Sports entries can include an optional role or position and a more specific role. Every entry can include a description and image.
+- **Online room:** Create an online event, add entries and base prices, then open the room. Share its link or 12 character code, approve bidders, and start the auction. The host manages the room and does not bid. Bidders can preview entries, images, details, and base prices before bidding starts.
 - **Install on a phone:** Open **Settings → Install app**. Sign-in and online rooms still require internet.
 
 The interface is built with Next.js 16, React 19, NextAuth, Prisma, and Supabase Postgres. Signed-in image uploads are compressed and stored in Postgres. Local images are stored with the local event in browser storage.
+
+Bulk paste and CSV imports accept `name, base price, image URL, role, advanced role, description`. Only the name is required; existing three-column files still work.
 
 ## Run locally
 

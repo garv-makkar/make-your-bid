@@ -1,0 +1,20 @@
+.create-form .auction-type-picker { flex: 1 1 100%; display: grid; gap: 8px; min-width: 0; }
+.auction-type-label { color: #26372b; font-size: 13px; font-weight: 700; }
+.auction-type-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.auction-type-options button { display: grid; gap: 3px; min-width: 0; padding: 11px 14px; border: 1px solid #d4e0d2; border-radius: 12px; background: #fff; color: #214b39; box-shadow: none; text-align: left; }
+.auction-type-options button.selected { border-color: #214b39; background: #e8f0e5; box-shadow: 0 0 0 2px #214b3916; }
+.auction-type-options button:hover { border-color: #8eb59a; background: #f2f7f0; transform: none; }
+.auction-type-options strong { font-size: 15px; }
+.auction-type-options small { color: #617568; font-size: 11px; font-weight: 500; }
+.auction-type-picker .styled-select { max-width: 340px; }
+.entry-sports-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.entry-sports-fields .styled-select { position: relative; display: grid; gap: 8px; }
+.entry-description { min-height: 80px; }
+.entry-meta { display: block; margin: 7px 0; color: #526a5b; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.entry-meta > span { display: block; }
+.entry-row-image { flex: none; width: 52px; height: 52px; border-radius: 8px; object-fit: cover; }
+.entry-preview-image { width: 54px; height: 54px; border-radius: 8px; object-fit: cover; }
+.prestart-entry-list li > span:first-child { flex-wrap: wrap; align-items: center; }
+.prestart-entry-list li .entry-meta { flex: 1 1 100%; margin: 0 0 0 24px; font-weight: 400; }
+.prestart-entry-list li > span:last-child { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 700px) { .entry-sports-fields { grid-template-columns: 1fr; } .auction-type-picker .styled-select { max-width: none; } }

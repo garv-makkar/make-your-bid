@@ -1,9 +1,16 @@
-import { parseCsv, priceSchema } from './validation';
+import { entrySchema, parseCsv, priceSchema } from './validation';
 
 const KEY = 'make-your-bid:guest-events:v1';
+const localEntrySchema = entrySchema.omit({ imageUrl: true });
+function localEntry(raw: unknown) {
+  const entry = localEntrySchema.parse(raw);
+  const imageUrl = typeof raw === 'object' && raw && 'imageUrl' in raw && typeof raw.imageUrl === 'string' ? raw.imageUrl.trim() : '';
+  return { name: entry.name, basePriceCents: entry.basePrice, imageUrl: imageUrl || null, description: entry.description || null, role: entry.role || null, specialty: entry.specialty || null };
+}
 
 export type GuestEntry = {
   id: string; name: string; basePriceCents: number; imageUrl: string | null;
+  description?: string | null; role?: string | null; specialty?: string | null;
   position: number; status: string; soldPriceCents: number | null;
   winner: string | null; winnerId?: string | null; saleMode: string | null;
 };
@@ -64,8 +71,8 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
   if (!event) throw new Error('Local event not found in this browser.');
   if (event.status === 'LIVE' && event.roundMode === 'TIMED' && event.timerEndsAt && Date.now() >= new Date(event.timerEndsAt).getTime() && data.action !== 'settleTimed') throw new Error('The timer ended. Settle the timed round.');
   const editable = () => { if (!['DRAFT', 'PAUSED'].includes(event.status)) throw new Error('Pause bidding to edit entries.'); };
-  const entryInput = data.entry as { name: string; basePrice: string; imageUrl: string };
-  const entryDetails = () => ({ name: entryInput.name.trim(), basePriceCents: priceSchema.parse(entryInput.basePrice), imageUrl: entryInput.imageUrl.trim() || null });
+  const entryInput = data.entry;
+  const entryDetails = () => localEntry(entryInput);
   switch (data.action) {
     case 'startingBudget': {
       if (event.status !== 'DRAFT') throw new Error('Set the default budget before starting.');
@@ -115,10 +122,10 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
     }
     case 'addMany': {
       editable();
-      const rows = data.entries as { name: string; basePrice: string; imageUrl: string }[];
+      const rows = data.entries as unknown[];
       if (event.entries.length + rows.length > 500) throw new Error('Maximum 500 entries per event.');
       let position = (event.entries.at(-1)?.position ?? -1) + 1;
-      for (const row of rows) event.entries.push({ id: crypto.randomUUID(), name: row.name.trim(), basePriceCents: priceSchema.parse(row.basePrice), imageUrl: row.imageUrl || null, position: position++, status: 'PENDING', soldPriceCents: null, winner: null, winnerId: null, saleMode: null });
+      for (const raw of rows) event.entries.push({ id: crypto.randomUUID(), ...localEntry(raw), position: position++, status: 'PENDING', soldPriceCents: null, winner: null, winnerId: null, saleMode: null });
       break;
     }
     case 'edit': {
@@ -137,7 +144,7 @@ export function guestCommand(id: string, data: Record<string, unknown>): GuestEv
       const rows = parseCsv(String(data.csv));
       if (event.entries.length + rows.length > 500) throw new Error('Maximum 500 entries per event.');
       let position = (event.entries.at(-1)?.position ?? -1) + 1;
-      for (const row of rows) event.entries.push({ id: crypto.randomUUID(), name: row.name, basePriceCents: row.basePrice, imageUrl: row.imageUrl || null, position: position++, status: 'PENDING', soldPriceCents: null, winner: null, winnerId: null, saleMode: null });
+      for (const row of rows) event.entries.push({ id: crypto.randomUUID(), name: row.name, basePriceCents: row.basePrice, imageUrl: row.imageUrl || null, description: row.description || null, role: row.role || null, specialty: row.specialty || null, position: position++, status: 'PENDING', soldPriceCents: null, winner: null, winnerId: null, saleMode: null });
       break;
     }
     case 'reorder': {

@@ -141,19 +141,19 @@ export const POST = (request: Request, context: Context) => api(async () => {
         editable();
         if (event.entries.length >= MAX_ENTRIES) throw new HttpError(400, `Maximum ${MAX_ENTRIES} entries per event.`);
         await checkImage(command.entry.imageUrl);
-        await tx.entry.create({ data: { eventId: id, name: command.entry.name, basePriceCents: command.entry.basePrice, imageUrl: command.entry.imageUrl || null, position: (event.entries.at(-1)?.position ?? -1) + 1 } }); break;
+        await tx.entry.create({ data: { eventId: id, name: command.entry.name, basePriceCents: command.entry.basePrice, imageUrl: command.entry.imageUrl || null, description: command.entry.description || null, role: command.entry.role || null, specialty: command.entry.specialty || null, position: (event.entries.at(-1)?.position ?? -1) + 1 } }); break;
       }
       case 'addMany': {
         editable();
         if (event.entries.length + command.entries.length > MAX_ENTRIES) throw new HttpError(400, `Maximum ${MAX_ENTRIES} entries per event.`);
         for (const entry of command.entries) await checkImage(entry.imageUrl);
         const start = (event.entries.at(-1)?.position ?? -1) + 1;
-        await tx.entry.createMany({ data: command.entries.map((entry, index) => ({ eventId: id, name: entry.name, basePriceCents: entry.basePrice, imageUrl: entry.imageUrl || null, position: start + index })) });
+        await tx.entry.createMany({ data: command.entries.map((entry, index) => ({ eventId: id, name: entry.name, basePriceCents: entry.basePrice, imageUrl: entry.imageUrl || null, description: entry.description || null, role: entry.role || null, specialty: entry.specialty || null, position: start + index })) });
         break;
       }
       case 'edit':
         editable(); pendingEntry(command.entryId); await checkImage(command.entry.imageUrl);
-        await tx.entry.update({ where: { id: command.entryId }, data: { name: command.entry.name, basePriceCents: command.entry.basePrice, imageUrl: command.entry.imageUrl || null } }); break;
+        await tx.entry.update({ where: { id: command.entryId }, data: { name: command.entry.name, basePriceCents: command.entry.basePrice, imageUrl: command.entry.imageUrl || null, description: command.entry.description || null, role: command.entry.role || null, specialty: command.entry.specialty || null } }); break;
       case 'remove':
         editable(); pendingEntry(command.entryId);
         await tx.entry.delete({ where: { id: command.entryId } }); break;
@@ -163,7 +163,7 @@ export const POST = (request: Request, context: Context) => api(async () => {
         try { entries = parseCsv(command.csv); } catch (error) { throw new HttpError(400, (error as Error).message); }
         if (event.entries.length + entries.length > MAX_ENTRIES) throw new HttpError(400, `Maximum ${MAX_ENTRIES} entries per event.`);
         const start = (event.entries.at(-1)?.position ?? -1) + 1;
-        await tx.entry.createMany({ data: entries.map((e, index) => ({ eventId: id, name: e.name, basePriceCents: e.basePrice, imageUrl: e.imageUrl || null, position: start + index })) }); break;
+        await tx.entry.createMany({ data: entries.map((e, index) => ({ eventId: id, name: e.name, basePriceCents: e.basePrice, imageUrl: e.imageUrl || null, description: e.description || null, role: e.role || null, specialty: e.specialty || null, position: start + index })) }); break;
       }
       case 'reorder': {
         editable();
